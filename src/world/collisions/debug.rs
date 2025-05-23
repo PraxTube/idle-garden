@@ -5,7 +5,6 @@ use crate::world::DebugState;
 use super::{ColliderColor, DynamicCollider, StaticCollider};
 
 const DEFAULT_COLLIDER_COLOR: Color = Color::srgb(0.8, 0.3, 0.1);
-const DEFAULT_SENSOR_COLOR: Color = Color::srgb(0.1, 0.4, 0.8);
 
 pub fn visualize_colliders(
     mut gizmos: Gizmos,

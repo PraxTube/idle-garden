@@ -6,6 +6,7 @@ mod map;
 pub use camera::{MainCamera, YSort};
 pub use collisions::{DynamicCollider, Velocity, PLAYER_COLLISION_GROUPS};
 pub use debug::DebugState;
+pub use map::Flora;
 
 use bevy::prelude::*;
 

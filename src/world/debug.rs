@@ -8,6 +8,7 @@ use crate::player::{GamingInput, InputControllerSystem};
 #[derive(Resource, Default)]
 pub struct DebugState {
     pub active: bool,
+    pub grid_debug_active: bool,
 }
 
 fn toggle_debug_state(gaming_input: Res<GamingInput>, mut debug_state: ResMut<DebugState>) {

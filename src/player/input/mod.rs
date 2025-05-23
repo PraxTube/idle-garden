@@ -57,14 +57,13 @@ struct PreviousCursorPosition(Vec2);
 #[derive(Resource, Default, Clone, Copy, PartialEq)]
 pub struct GamingInput {
     pub toggle_debug: bool,
-    pub toggle_grid_debug: bool,
-    pub screenshot: bool,
+    pub toggle_debug_grid: bool,
 
     pub scroll: i32,
 
     pub move_direction: Vec2,
     pub aim_direction: Vec2,
-    pub light_attack: bool,
+    pub confirm: bool,
     pub heavy_attack: bool,
     pub parry: bool,
     pub dash: bool,
@@ -94,8 +93,9 @@ impl BitOrAssign for GamingInput {
         }
 
         self.toggle_debug |= rhs.toggle_debug;
+        self.toggle_debug_grid |= rhs.toggle_debug_grid;
 
-        self.light_attack |= rhs.light_attack;
+        self.confirm |= rhs.confirm;
         self.heavy_attack |= rhs.heavy_attack;
         self.parry |= rhs.parry;
         self.dash |= rhs.dash;

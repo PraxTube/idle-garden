@@ -8,6 +8,7 @@
 
 mod assets;
 mod player;
+mod ui;
 mod world;
 
 pub use assets::GameAssets;
@@ -61,6 +62,6 @@ fn main() {
                 .load_collection::<GameAssets>(),
         )
         .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .add_plugins((player::PlayerPlugin, world::WorldPlugin))
+        .add_plugins((ui::UiPlugin, world::WorldPlugin, player::PlayerPlugin))
         .run();
 }

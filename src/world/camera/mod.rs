@@ -67,6 +67,7 @@ impl CameraSystemSet {
 
     /// The last SystemSet of the Camera SystemSets.
     /// If you need to run something after the camera system set, use this.
+    #[allow(unused)]
     pub fn last() -> Self {
         Self::ApplyYSort
     }

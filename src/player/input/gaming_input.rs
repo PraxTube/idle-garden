@@ -51,8 +51,9 @@ fn handle_keyboard_inputs(
     let mut input = GamingInput::default();
 
     input.toggle_debug = keys.just_pressed(KeyCode::F3);
+    input.toggle_debug_grid = keys.just_pressed(KeyCode::KeyG);
 
-    input.light_attack =
+    input.confirm =
         keys.just_pressed(KeyCode::KeyL) || mouse_buttons.just_pressed(MouseButton::Left);
     input.heavy_attack =
         keys.just_pressed(KeyCode::KeyN) || mouse_buttons.just_pressed(MouseButton::Right);
@@ -122,7 +123,7 @@ fn handle_gamepad_inputs(
     let mut input = GamingInput::default();
 
     for gamepad in &q_gamepads {
-        input.light_attack = gamepad.just_pressed(GamepadButton::West);
+        input.confirm = gamepad.just_pressed(GamepadButton::West);
         input.heavy_attack = gamepad.just_pressed(GamepadButton::North);
         input.parry = gamepad.just_pressed(GamepadButton::LeftTrigger);
         input.dash = gamepad.just_pressed(GamepadButton::LeftTrigger2);
