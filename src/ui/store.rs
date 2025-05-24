@@ -6,6 +6,8 @@ use bevy::{
 use crate::{player::GamingInput, world::Flora, GameAssets, GameState, DEFAULT_WINDOW_WIDTH};
 
 const STORE_ROOT_PADDING: f32 = 40.0;
+const STORE_HEIGHT: f32 = 75.0;
+const HORIZONTAL_ITEM_PADDING: f32 = 30.0;
 
 #[derive(Component)]
 struct StoreRoot;
@@ -38,7 +40,7 @@ fn spawn_store(mut commands: Commands, assets: Res<GameAssets>) {
                 left: Val::Px(STORE_ROOT_PADDING),
                 right: Val::Px(STORE_ROOT_PADDING),
                 top: Val::Px(STORE_ROOT_PADDING),
-                height: Val::Px(125.0),
+                height: Val::Px(STORE_HEIGHT),
                 width: Val::Px(DEFAULT_WINDOW_WIDTH - 2.0 * STORE_ROOT_PADDING),
                 position_type: PositionType::Absolute,
                 ..default()
@@ -71,6 +73,11 @@ fn spawn_store(mut commands: Commands, assets: Res<GameAssets>) {
             Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
+                padding: UiRect {
+                    left: Val::Px(HORIZONTAL_ITEM_PADDING),
+                    right: Val::Px(HORIZONTAL_ITEM_PADDING),
+                    ..default()
+                },
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
                 column_gap: Val::Auto,
@@ -167,7 +174,7 @@ fn trigger_button_pressed(
     let vegetation = match item.index {
         0 => Flora::Potatoe,
         1 => Flora::Tree,
-        _ => Flora::Weed,
+        _ => Flora::Tree,
     };
 
     ev_item_pressed.write(ItemPressed { flora: vegetation });

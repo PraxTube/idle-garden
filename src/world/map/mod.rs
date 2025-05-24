@@ -22,8 +22,14 @@ impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((flora::MapFloraPlugin, debug::MapDebugPlugin))
             .init_resource::<MapGrid>()
+            .init_resource::<ProgressionCore>()
             .add_systems(OnExit(GameState::AssetLoading), spawn_grass);
     }
+}
+
+#[derive(Resource)]
+pub struct ProgressionCore {
+    flora: Vec<u32>,
 }
 
 #[derive(Resource)]
@@ -38,6 +44,14 @@ pub enum ZLevel {
     // BottomEnvironment,
     // TopEnvironment,
     TopUi,
+}
+
+impl Default for ProgressionCore {
+    fn default() -> Self {
+        Self {
+            flora: vec![0; Flora::len()],
+        }
+    }
 }
 
 impl Default for MapGrid {
@@ -280,7 +294,7 @@ fn validate_grid_index() {
 
 #[test]
 fn validate_grid_position_from_player_pos() {
-    let mut map_grid = MapGrid::default();
+    let map_grid = MapGrid::default();
 
     assert_ne!(
         map_grid.grid_position_from_player_pos(Vec2::ZERO, (2, 1)),
