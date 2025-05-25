@@ -2,6 +2,10 @@ use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 
 pub const FLORA_DATA_CORE: &str = include_str!("../../assets/progression/flora.json");
+#[cfg(target_arch = "wasm32")]
+pub const WASM_MAP_GRID_KEY_STORAGE: &str = "map-grid";
+#[cfg(target_arch = "wasm32")]
+pub const WASM_PROGRESSION_CORE_KEY_STORAGE: &str = "progression-core";
 
 #[derive(AssetCollection, Resource)]
 pub struct GameAssets {

@@ -5,12 +5,13 @@ pub use flora::Flora;
 
 use bevy::prelude::*;
 use rand::{thread_rng, Rng};
+use serde::{Deserialize, Serialize};
 
 use crate::{GameAssets, GameState};
 
 use super::TILE_SIZE;
 
-const MAP_SIZE: usize = 7500;
+const MAP_SIZE: usize = 500;
 const MAX_RANDOM_SEARCH_TRIES: usize = 50;
 const GRID_SEARCH_SIZE: usize = 10;
 /// Amount of tiles the searching will avoid around the player. Inclusive.
@@ -21,15 +22,16 @@ pub struct MapPlugin;
 impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((flora::MapFloraPlugin, debug::MapDebugPlugin))
-            .init_resource::<MapGrid>()
-            .init_resource::<ProgressionCore>()
-            .add_systems(OnExit(GameState::AssetLoading), spawn_grass);
+            .add_systems(OnExit(GameState::AssetLoading), spawn_grass)
+            .add_systems(Startup, (insert_progression_core, insert_map_grid_resource))
+            .add_systems(Update, save_game_state);
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Serialize, Deserialize)]
 pub struct ProgressionCore {
-    pub flora: Vec<u32>,
+    previous_timestamp: u64,
+    pub flora: Vec<u16>,
 }
 
 #[derive(Resource)]
@@ -46,23 +48,74 @@ pub enum ZLevel {
     TopUi,
 }
 
-impl Default for ProgressionCore {
-    fn default() -> Self {
+impl ProgressionCore {
+    fn empty() -> Self {
         Self {
+            previous_timestamp: 0,
             flora: vec![0; Flora::len()],
         }
     }
 }
 
-impl Default for MapGrid {
-    fn default() -> Self {
+impl MapGrid {
+    fn empty() -> Self {
         Self {
             grid: vec![[0; MAP_SIZE]; MAP_SIZE],
         }
     }
-}
 
-impl MapGrid {
+    /// Expects string to be of form
+    ///
+    /// usize,usize:u16;REPEAT
+    fn from_str(string: &str) -> Self {
+        let mut map_grid = MapGrid::empty();
+
+        if string.is_empty() {
+            return map_grid;
+        }
+
+        for raw_data_point in string.split(';').collect::<Vec<&str>>() {
+            let parts = raw_data_point.split(':').collect::<Vec<&str>>();
+            debug_assert_eq!(parts.len(), 2, "{:?}", string);
+
+            let xy = parts[0].split(',').collect::<Vec<&str>>();
+
+            debug_assert_eq!(xy.len(), 2, "{:?}", string);
+
+            let (x, y) = (
+                xy[0].parse::<usize>().expect("failed to parse to usize"),
+                xy[1].parse::<usize>().expect("failed to parse to usize"),
+            );
+
+            let value = parts[1]
+                .parse::<u16>()
+                .expect("failed to parse value to u16");
+
+            map_grid.grid[x][y] = value;
+        }
+
+        map_grid
+    }
+
+    fn to_string(&self) -> String {
+        let mut string = String::new();
+
+        for x in 0..MAP_SIZE {
+            for y in 0..MAP_SIZE {
+                if self.grid[x][y] == 0 {
+                    continue;
+                }
+
+                if !string.is_empty() {
+                    string.push(';');
+                }
+
+                string.push_str(&format!("{},{}:{}", x, y, self.grid[x][y]));
+            }
+        }
+        string
+    }
+
     fn grid(&self) -> &Vec<[u16; MAP_SIZE]> {
         &self.grid
     }
@@ -231,9 +284,102 @@ fn spawn_grass(mut commands: Commands, assets: Res<GameAssets>) {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+fn insert_map_grid_resource_wasm(commands: &mut Commands) {
+    use crate::assets::WASM_MAP_GRID_KEY_STORAGE;
+
+    use web_sys::window;
+
+    let storage = window()
+        .expect("failed to get window")
+        .local_storage()
+        .expect("failed to get local storage")
+        .expect("failed to unwrap local storage");
+
+    let map_grid = match storage
+        .get_item(WASM_MAP_GRID_KEY_STORAGE)
+        .expect("failed to get local storage item WASM key")
+    {
+        Some(r) => MapGrid::from_str(&r),
+        None => MapGrid::empty(),
+    };
+
+    commands.insert_resource(map_grid);
+}
+
+fn insert_map_grid_resource(mut commands: Commands) {
+    #[cfg(target_arch = "wasm32")]
+    insert_map_grid_resource_wasm(&mut commands);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    commands.insert_resource(MapGrid::empty());
+}
+
+#[cfg(target_arch = "wasm32")]
+fn insert_progression_core_wasm(commands: &mut Commands) {
+    use crate::assets::WASM_PROGRESSION_CORE_KEY_STORAGE;
+
+    use web_sys::window;
+
+    let storage = window()
+        .expect("failed to get window")
+        .local_storage()
+        .expect("failed to get local storage")
+        .expect("failed to unwrap local storage");
+
+    let core = match storage
+        .get_item(WASM_PROGRESSION_CORE_KEY_STORAGE)
+        .expect("failed to get local storage item WASM key")
+    {
+        Some(r) => {
+            serde_json::from_str(&r).expect("failed to parse progression core from json string")
+        }
+        None => ProgressionCore::empty(),
+    };
+
+    commands.insert_resource(core);
+}
+
+fn insert_progression_core(mut commands: Commands) {
+    #[cfg(target_arch = "wasm32")]
+    insert_progression_core_wasm(&mut commands);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    commands.insert_resource(ProgressionCore::empty());
+}
+
+#[cfg(target_arch = "wasm32")]
+fn save_game_state_wasm(core: &ProgressionCore, map_grid: &MapGrid) {
+    use crate::assets::{WASM_MAP_GRID_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE};
+
+    use web_sys::window;
+
+    let storage = window()
+        .expect("failed to get window")
+        .local_storage()
+        .expect("failed to get local storage")
+        .expect("failed to unwrap local storage");
+
+    storage
+        .set_item(WASM_MAP_GRID_KEY_STORAGE, &map_grid.to_string())
+        .expect("failed to set local storage progression core");
+
+    storage
+        .set_item(
+            WASM_PROGRESSION_CORE_KEY_STORAGE,
+            &serde_json::to_string(core).expect("failed to serialize progression core"),
+        )
+        .expect("failed to set local storage progression core");
+}
+
+fn save_game_state(core: Res<ProgressionCore>, map_grid: Res<MapGrid>) {
+    #[cfg(target_arch = "wasm32")]
+    save_game_state_wasm(&core, &map_grid);
+}
+
 #[test]
 fn validate_pos_to_grid_indices() {
-    let map_grid = MapGrid::default();
+    let map_grid = MapGrid::empty();
 
     assert_eq!(
         map_grid.pos_to_grid_indices(Vec2::ZERO),
@@ -265,7 +411,7 @@ fn validate_pos_to_grid_indices() {
 
 #[test]
 fn validate_grid_indices_to_pos() {
-    let map_grid = MapGrid::default();
+    let map_grid = MapGrid::empty();
 
     assert_eq!(
         map_grid.grid_indices_to_pos(0, 0),
@@ -283,7 +429,7 @@ fn validate_grid_indices_to_pos() {
 
 #[test]
 fn validate_grid_index() {
-    let map_grid = MapGrid::default();
+    let map_grid = MapGrid::empty();
 
     map_grid.grid_index(0, 0);
     map_grid.grid_index(MAP_SIZE, 0);
@@ -294,7 +440,7 @@ fn validate_grid_index() {
 
 #[test]
 fn validate_grid_position_from_player_pos() {
-    let map_grid = MapGrid::default();
+    let map_grid = MapGrid::empty();
 
     assert_ne!(
         map_grid.grid_position_from_player_pos(Vec2::ZERO, (2, 1)),
@@ -304,7 +450,7 @@ fn validate_grid_position_from_player_pos() {
 
 #[test]
 fn validate_random_grid_positions() {
-    let map_grid = MapGrid::default();
+    let map_grid = MapGrid::empty();
 
     for i in 0..10000 {
         assert_ne!(

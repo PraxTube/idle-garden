@@ -52,10 +52,6 @@ impl DynamicCollider {
         Self { radius, offset }
     }
 
-    pub fn radius(&self) -> f32 {
-        self.radius
-    }
-
     pub fn offset(&self) -> Vec2 {
         self.offset
     }

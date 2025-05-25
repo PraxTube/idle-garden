@@ -307,7 +307,7 @@ impl Plugin for UiStorePlugin {
                     handle_button_interaction,
                     highlight_item,
                     trigger_button_pressed,
-                    update_store_item_count_texts,
+                    update_store_item_count_texts.run_if(resource_exists::<ProgressionCore>),
                 )
                     .chain(),
             )

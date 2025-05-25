@@ -8,7 +8,7 @@ use crate::{
 use super::Player;
 
 pub const COLLIDER_RADIUS: f32 = 2.5;
-pub const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -8.0);
+pub const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -12.5);
 
 fn spawn_player(mut commands: Commands, assets: Res<GameAssets>) {
     commands.spawn((

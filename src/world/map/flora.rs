@@ -194,8 +194,9 @@ impl Plugin for MapFloraPlugin {
         app.add_systems(
             Update,
             (
-                spawn_flora_from_item_pressed.run_if(resource_exists::<GameAssets>),
-                increment_progression_core_flora,
+                spawn_flora_from_item_pressed
+                    .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapGrid>)),
+                increment_progression_core_flora.run_if(resource_exists::<ProgressionCore>),
             ),
         )
         .add_systems(Startup, insert_flora_data_core);

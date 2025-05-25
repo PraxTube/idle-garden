@@ -99,7 +99,8 @@ impl Plugin for MapDebugPlugin {
                 despawn_grid_debug_visuals,
                 spawn_grid_debug_visuals,
             )
-                .chain(),
+                .chain()
+                .run_if(resource_exists::<MapGrid>),
         );
     }
 }

@@ -2436,10 +2436,12 @@ dependencies = [
  "bevy",
  "bevy_asset_loader",
  "chrono",
+ "js-sys",
  "rand",
  "rand_xoshiro",
  "serde",
  "serde_json",
+ "web-sys",
 ]
 
 [[package]]
