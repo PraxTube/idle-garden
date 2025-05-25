@@ -1,5 +1,6 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use serde::Deserialize;
+use strum::FromRepr;
 
 use crate::{
     assets::FLORA_DATA_CORE,
@@ -13,12 +14,12 @@ use crate::{
     GameAssets,
 };
 
-use super::{MapGrid, ProgressionCore};
+use super::{MapGrid, ProgressionCore, MAP_SIZE};
 
 #[derive(Resource, Deserialize)]
 struct FloraDataCore(HashMap<Flora, FloraData>);
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 struct FloraData {
     cost: u32,
     pps: u32,
@@ -28,7 +29,7 @@ struct FloraData {
     size_on_grid: (usize, usize),
 }
 
-#[derive(Clone, Copy, Deserialize, Hash, Eq, PartialEq, Default)]
+#[derive(Clone, Copy, Deserialize, Hash, Eq, PartialEq, Default, FromRepr)]
 pub enum Flora {
     #[default]
     Potatoe,
@@ -39,56 +40,26 @@ pub enum Flora {
 }
 
 impl FloraDataCore {
-    fn ysort(&self, flora: Flora) -> YSort {
-        let y = self
-            .0
-            .get(&flora)
-            .expect("failed to get hashmap value from flora")
-            .ysort;
-        YSort(y)
-    }
-
-    fn gfx_offset(&self, flora: Flora) -> Vec2 {
-        let (x, y) = self
-            .0
-            .get(&flora)
-            .expect("failed to get hashmap value from flora")
-            .gfx_offset;
-        Vec2::new(x, y)
-    }
-
-    fn collider(&self, flora: Flora) -> StaticCollider {
-        let (x, y) = self
-            .0
-            .get(&flora)
-            .expect("failed to get hashmap value from flora")
-            .collider_size;
-        StaticCollider::new(x, y)
-    }
-
-    fn size_on_grid(&self, flora: Flora) -> (usize, usize) {
-        let (x, y) = self
-            .0
-            .get(&flora)
-            .expect("failed to get hashmap value from flora")
-            .size_on_grid;
-        debug_assert!(x > 0);
-        debug_assert!(y > 0);
-        (x, y)
-    }
-
-    fn size_offset(&self, flora: Flora) -> Vec2 {
-        let (x, y) = self.size_on_grid(flora);
-
-        debug_assert!(x > 0);
-        debug_assert!(y > 0);
-
-        0.5 * TILE_SIZE * Vec2::new((x - 1) as f32, (y - 1) as f32)
+    fn flora_data(&self, flora: &Flora) -> FloraData {
+        self.0
+            .get(flora)
+            .expect("failed to get flora data from hashmap")
+            .clone()
     }
 }
 
 impl Flora {
-    fn last() -> Flora {
+    fn from_index(index: usize) -> Self {
+        match Self::from_repr(index) {
+            Some(r) => r,
+            None => {
+                error!("failed to create Flora from index, probably backwards incompatibility.");
+                Self::default()
+            }
+        }
+    }
+
+    fn last() -> Self {
         Flora::Tree
     }
 
@@ -100,10 +71,6 @@ impl Flora {
         *self as usize
     }
 
-    fn grid_value(&self) -> u16 {
-        *self as u16 + 1
-    }
-
     pub fn image(&self, assets: &GameAssets) -> Handle<Image> {
         assets.flora_images[self.index()].clone()
     }
@@ -113,17 +80,49 @@ impl Flora {
     }
 }
 
+impl FloraData {
+    fn ysort(&self) -> YSort {
+        YSort(self.ysort)
+    }
+
+    fn gfx_offset(&self) -> Vec2 {
+        let (x, y) = self.gfx_offset;
+        Vec2::new(x, y)
+    }
+
+    fn collider(&self) -> StaticCollider {
+        let (x, y) = self.collider_size;
+        StaticCollider::new(x, y)
+    }
+
+    fn size_on_grid(&self) -> (usize, usize) {
+        let (x, y) = self.size_on_grid;
+        debug_assert!(x > 0);
+        debug_assert!(y > 0);
+        (x, y)
+    }
+
+    fn size_offset(&self) -> Vec2 {
+        let (x, y) = self.size_on_grid;
+
+        debug_assert!(x > 0);
+        debug_assert!(y > 0);
+
+        0.5 * TILE_SIZE * Vec2::new((x - 1) as f32, (y - 1) as f32)
+    }
+}
+
 fn spawn_flora(
     commands: &mut Commands,
     assets: &GameAssets,
-    core: &FloraDataCore,
     pos: Vec2,
-    flora: Flora,
+    flora: &Flora,
+    data: &FloraData,
 ) {
     let image = flora.image(assets);
-    let collider = core.collider(flora);
-    let ysort = core.ysort(flora);
-    let gfx_offset = core.gfx_offset(flora);
+    let collider = data.collider();
+    let ysort = data.ysort();
+    let gfx_offset = data.gfx_offset();
 
     let root = commands
         .spawn((
@@ -156,18 +155,19 @@ fn spawn_flora_from_item_pressed(
     };
 
     for ev in ev_item_pressed.read() {
+        let flora_data = core.flora_data(&ev.flora);
         let pos = map_grid.random_grid_position_near_player_pos(
             transform.translation.xy(),
-            core.size_on_grid(ev.flora),
+            flora_data.size_on_grid(),
         );
 
-        map_grid.set_map_grid_value_at_pos(pos, core.size_on_grid(ev.flora), ev.flora.grid_value());
+        map_grid.set_map_grid_value_at_pos(pos, flora_data.size_on_grid(), ev.flora.index() as u16);
         spawn_flora(
             &mut commands,
             &assets,
-            &core,
-            pos + core.size_offset(ev.flora),
-            ev.flora,
+            pos + flora_data.size_offset(),
+            &ev.flora,
+            &flora_data,
         );
     }
 }
@@ -187,6 +187,29 @@ fn insert_flora_data_core(mut commands: Commands) {
     commands.insert_resource(core);
 }
 
+fn spawn_flora_on_map_grid_insertion(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    core: Res<FloraDataCore>,
+    map_grid: Res<MapGrid>,
+) {
+    info!("spawn");
+    for x in 0..MAP_SIZE {
+        for y in 0..MAP_SIZE {
+            if map_grid.grid[x][y] == u16::MAX {
+                continue;
+            }
+
+            let pos = map_grid.grid_indices_to_pos(x, y);
+
+            let flora = Flora::from_index(map_grid.grid_index(x, y).into());
+            let flora_data = core.flora_data(&flora);
+
+            spawn_flora(&mut commands, &assets, pos, &flora, &flora_data);
+        }
+    }
+}
+
 pub struct MapFloraPlugin;
 
 impl Plugin for MapFloraPlugin {
@@ -199,6 +222,15 @@ impl Plugin for MapFloraPlugin {
                 increment_progression_core_flora.run_if(resource_exists::<ProgressionCore>),
             ),
         )
-        .add_systems(Startup, insert_flora_data_core);
+        .add_systems(Startup, insert_flora_data_core)
+        .add_systems(
+            Update,
+            spawn_flora_on_map_grid_insertion.run_if(
+                resource_exists::<GameAssets>
+                    .and(resource_exists::<MapGrid>)
+                    .and(resource_exists::<FloraDataCore>)
+                    .and(run_once),
+            ),
+        );
     }
 }

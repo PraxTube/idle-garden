@@ -2441,6 +2441,7 @@ dependencies = [
  "rand_xoshiro",
  "serde",
  "serde_json",
+ "strum",
  "web-sys",
 ]
 

@@ -23,8 +23,15 @@ impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((flora::MapFloraPlugin, debug::MapDebugPlugin))
             .add_systems(OnExit(GameState::AssetLoading), spawn_grass)
-            .add_systems(Startup, (insert_progression_core, insert_map_grid_resource))
-            .add_systems(Update, save_game_state);
+            .add_systems(
+                OnExit(GameState::AssetLoading),
+                (insert_progression_core, insert_map_grid_resource),
+            )
+            .add_systems(
+                Update,
+                save_game_state
+                    .run_if(resource_exists::<MapGrid>.and(resource_exists::<ProgressionCore>)),
+            );
     }
 }
 
@@ -60,7 +67,7 @@ impl ProgressionCore {
 impl MapGrid {
     fn empty() -> Self {
         Self {
-            grid: vec![[0; MAP_SIZE]; MAP_SIZE],
+            grid: vec![[u16::MAX; MAP_SIZE]; MAP_SIZE],
         }
     }
 
@@ -102,7 +109,7 @@ impl MapGrid {
 
         for x in 0..MAP_SIZE {
             for y in 0..MAP_SIZE {
-                if self.grid[x][y] == 0 {
+                if self.grid_index(x, y) == u16::MAX {
                     continue;
                 }
 
@@ -110,14 +117,10 @@ impl MapGrid {
                     string.push(';');
                 }
 
-                string.push_str(&format!("{},{}:{}", x, y, self.grid[x][y]));
+                string.push_str(&format!("{},{}:{}", x, y, self.grid_index(x, y)));
             }
         }
         string
-    }
-
-    fn grid(&self) -> &Vec<[u16; MAP_SIZE]> {
-        &self.grid
     }
 
     fn pos_to_grid_indices(&self, p: Vec2) -> (usize, usize) {
@@ -136,18 +139,18 @@ impl MapGrid {
         )
     }
 
-    fn grid_index(&self, x: usize, y: usize) -> u16 {
+    pub fn grid_index(&self, x: usize, y: usize) -> u16 {
         self.grid[x.min(MAP_SIZE - 1)][y.min(MAP_SIZE - 1)]
     }
 
     fn fits_at_grid_position(&self, x: usize, y: usize, x_size: usize, y_size: usize) -> bool {
-        if self.grid_index(x, y) != 0 {
+        if self.grid_index(x, y) != u16::MAX {
             return false;
         }
 
         for inner_x in 0..x_size {
             for inner_y in 0..y_size {
-                if self.grid_index(x + inner_x, y + inner_y) != 0 {
+                if self.grid_index(x + inner_x, y + inner_y) != u16::MAX {
                     return false;
                 }
             }

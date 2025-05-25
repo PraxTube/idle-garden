@@ -40,8 +40,6 @@ fn spawn_grid_debug_visuals(
         return;
     }
 
-    let grid = map_grid.grid();
-
     let (player_x, player_y) = map_grid.pos_to_grid_indices(player_transform.translation.xy());
 
     for i in 0..DEBUG_GRID_SIZE {
@@ -49,11 +47,15 @@ fn spawn_grid_debug_visuals(
             let x = player_x.max(DEBUG_GRID_SIZE) + i - DEBUG_GRID_SIZE / 2;
             let y = player_y.max(DEBUG_GRID_SIZE) + j - DEBUG_GRID_SIZE / 2;
 
+            if map_grid.grid_index(x, y) == u16::MAX {
+                continue;
+            }
+
             let pos = map_grid.grid_indices_to_pos(x, y);
 
             commands.spawn((
                 GridDebugVisual,
-                Text2d::new(format!("{}", grid[x][y])),
+                Text2d::new(format!("{}", map_grid.grid_index(x, y))),
                 TextFont {
                     font_size: 10.0,
                     ..default()
@@ -61,10 +63,6 @@ fn spawn_grid_debug_visuals(
                 TextColor(WHITE.into()),
                 Transform::from_xyz(pos.x, pos.y, ZLevel::TopUi.value()),
             ));
-
-            if grid[x][y] == 0 {
-                continue;
-            }
 
             commands.spawn((
                 GridDebugVisual,
