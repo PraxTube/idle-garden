@@ -28,9 +28,13 @@ struct FloraData {
     size_on_grid: (usize, usize),
 }
 
-#[derive(Clone, Copy, Deserialize, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Hash, Eq, PartialEq, Default)]
 pub enum Flora {
+    #[default]
     Potatoe,
+    Raddish,
+    Carrot,
+    Sunflower,
     Tree,
 }
 
@@ -92,7 +96,7 @@ impl Flora {
         Flora::last().index() + 1
     }
 
-    fn index(&self) -> usize {
+    pub fn index(&self) -> usize {
         *self as usize
     }
 
@@ -100,11 +104,12 @@ impl Flora {
         *self as u16 + 1
     }
 
-    fn image_handle(&self, assets: &GameAssets) -> Handle<Image> {
-        match self {
-            Flora::Potatoe => assets.potatoe.clone(),
-            Flora::Tree => assets.tree.clone(),
-        }
+    pub fn image(&self, assets: &GameAssets) -> Handle<Image> {
+        assets.flora_images[self.index()].clone()
+    }
+
+    pub fn icon(&self, assets: &GameAssets) -> Handle<Image> {
+        assets.flora_icons[self.index()].clone()
     }
 }
 
@@ -115,7 +120,7 @@ fn spawn_flora(
     pos: Vec2,
     flora: Flora,
 ) {
-    let image = flora.image_handle(assets);
+    let image = flora.image(assets);
     let collider = core.collider(flora);
     let ysort = core.ysort(flora);
     let gfx_offset = core.gfx_offset(flora);

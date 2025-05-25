@@ -4,7 +4,31 @@
     "pps": 1,
     "ysort": 0,
     "gfx_offset": [0, 8],
-    "collider_size": [8, 6],
+    "collider_size": [5, 5],
+    "size_on_grid": [1, 1]
+  },
+  "Raddish": {
+    "cost": 50,
+    "pps": 1,
+    "ysort": 0,
+    "gfx_offset": [0, 8],
+    "collider_size": [5, 5],
+    "size_on_grid": [1, 1]
+  },
+  "Carrot": {
+    "cost": 50,
+    "pps": 1,
+    "ysort": 0,
+    "gfx_offset": [0, 8],
+    "collider_size": [5, 5],
+    "size_on_grid": [1, 1]
+  },
+  "Sunflower": {
+    "cost": 50,
+    "pps": 1,
+    "ysort": 0,
+    "gfx_offset": [0, 8],
+    "collider_size": [5, 5],
     "size_on_grid": [1, 1]
   },
   "Tree": {
@@ -12,7 +36,7 @@
     "pps": 5,
     "ysort": 0,
     "gfx_offset": [0, 40],
-    "collider_size": [8, 6],
+    "collider_size": [8, 8],
     "size_on_grid": [2, 1]
   }
 }

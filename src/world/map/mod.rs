@@ -29,7 +29,7 @@ impl Plugin for MapPlugin {
 
 #[derive(Resource)]
 pub struct ProgressionCore {
-    flora: Vec<u32>,
+    pub flora: Vec<u32>,
 }
 
 #[derive(Resource)]

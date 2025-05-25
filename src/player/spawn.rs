@@ -7,7 +7,7 @@ use crate::{
 
 use super::Player;
 
-pub const COLLIDER_RADIUS: f32 = 8.0;
+pub const COLLIDER_RADIUS: f32 = 2.5;
 pub const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -8.0);
 
 fn spawn_player(mut commands: Commands, assets: Res<GameAssets>) {
@@ -16,7 +16,7 @@ fn spawn_player(mut commands: Commands, assets: Res<GameAssets>) {
         PLAYER_COLLISION_GROUPS,
         Velocity::default(),
         DynamicCollider::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
-        YSort(0.0),
+        YSort(5.0),
         Sprite::from_image(assets.player.clone()),
     ));
 }
