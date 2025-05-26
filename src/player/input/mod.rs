@@ -44,7 +44,6 @@ pub struct InputControllerSystem;
 pub enum InputDevice {
     Mouse,
     Keyboard,
-    Gamepad,
 }
 
 /// Store cursor position at previous frame.
@@ -64,15 +63,9 @@ pub struct GamingInput {
     pub move_direction: Vec2,
     pub aim_direction: Vec2,
     pub confirm: bool,
-    pub heavy_attack: bool,
-    pub parry: bool,
-    pub dash: bool,
-    pub special_light: bool,
-    pub special_heavy: bool,
+    pub slash: bool,
 
     pub pause: bool,
-
-    pub toggle_player_collision_groups: bool,
 
     mouse_world_coords: Vec2,
 }
@@ -96,13 +89,8 @@ impl BitOrAssign for GamingInput {
         self.toggle_debug_grid |= rhs.toggle_debug_grid;
 
         self.confirm |= rhs.confirm;
-        self.heavy_attack |= rhs.heavy_attack;
-        self.parry |= rhs.parry;
-        self.dash |= rhs.dash;
-        self.special_light |= rhs.special_light;
-        self.special_heavy |= rhs.special_heavy;
+        self.slash |= rhs.slash;
         self.pause |= rhs.pause;
-        self.toggle_player_collision_groups |= rhs.toggle_player_collision_groups;
     }
 }
 

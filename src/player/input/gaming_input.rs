@@ -55,12 +55,7 @@ fn handle_keyboard_inputs(
 
     input.confirm =
         keys.just_pressed(KeyCode::KeyL) || mouse_buttons.just_pressed(MouseButton::Left);
-    input.heavy_attack =
-        keys.just_pressed(KeyCode::KeyN) || mouse_buttons.just_pressed(MouseButton::Right);
-    input.parry = keys.just_pressed(KeyCode::KeyP) || keys.just_pressed(KeyCode::KeyE);
-    input.dash = keys.just_pressed(KeyCode::ShiftLeft);
-    input.special_light = keys.just_pressed(KeyCode::KeyQ);
-    input.special_heavy = keys.just_pressed(KeyCode::Space);
+    input.slash = mouse_buttons.just_pressed(MouseButton::Left);
 
     let mut move_direction = Vec2::ZERO;
     if keys.pressed(KeyCode::KeyJ) || keys.pressed(KeyCode::KeyS) {
@@ -107,55 +102,10 @@ fn handle_keyboard_inputs(
 
     input.pause = keys.just_pressed(KeyCode::Escape);
 
-    input.toggle_player_collision_groups = keys.just_pressed(KeyCode::KeyT);
-
     if input != GamingInput::default() {
         *input_device = InputDevice::Keyboard;
     }
     *gaming_input |= input;
-}
-
-fn handle_gamepad_inputs(
-    mut gaming_input: ResMut<GamingInput>,
-    mut input_device: ResMut<InputDevice>,
-    q_gamepads: Query<&Gamepad>,
-) {
-    let mut input = GamingInput::default();
-
-    for gamepad in &q_gamepads {
-        input.confirm = gamepad.just_pressed(GamepadButton::West);
-        input.heavy_attack = gamepad.just_pressed(GamepadButton::North);
-        input.parry = gamepad.just_pressed(GamepadButton::LeftTrigger);
-        input.dash = gamepad.just_pressed(GamepadButton::LeftTrigger2);
-        input.special_light = gamepad.just_pressed(GamepadButton::East);
-        input.special_heavy = gamepad.just_pressed(GamepadButton::South);
-
-        input.pause = gamepad.just_pressed(GamepadButton::Start);
-
-        let mut zoom = 0;
-        if gamepad.just_pressed(GamepadButton::DPadLeft) {
-            zoom -= 1;
-        }
-        if gamepad.just_pressed(GamepadButton::DPadRight) {
-            zoom += 1;
-        }
-        input.scroll = zoom;
-
-        let left_stick_direction = {
-            let (x, y) = (
-                gamepad.get(GamepadAxis::LeftStickX).unwrap_or_default(),
-                gamepad.get(GamepadAxis::LeftStickY).unwrap_or_default(),
-            );
-            Vec2::new(x, y).normalize_or_zero()
-        };
-        input.move_direction = left_stick_direction;
-        input.aim_direction = left_stick_direction;
-
-        if input != GamingInput::default() {
-            *input_device = InputDevice::Gamepad;
-        }
-        *gaming_input |= input;
-    }
 }
 
 pub struct GamingInputPlugin;
@@ -168,7 +118,6 @@ impl Plugin for GamingInputPlugin {
                 fetch_mouse_world_coords,
                 update_aim_direction,
                 handle_keyboard_inputs,
-                handle_gamepad_inputs,
             )
                 .chain()
                 .run_if(in_state(GameState::Gaming))

@@ -17,7 +17,7 @@ use super::{MapData, ProgressionCore, MAP_SIZE};
 
 #[derive(Deserialize, Clone, Default)]
 pub struct FloraData {
-    cost: u32,
+    pub cost: u32,
     pub pps: u32,
     ysort: f32,
     gfx_offset: (f32, f32),
@@ -33,6 +33,11 @@ pub enum Flora {
     Carrot,
     Sunflower,
     Tree,
+}
+
+#[derive(Event)]
+struct SpawnFloraEvent {
+    flora: Flora,
 }
 
 impl Flora {
@@ -133,14 +138,14 @@ fn spawn_flora_from_item_pressed(
     assets: Res<GameAssets>,
     mut map_data: ResMut<MapData>,
     q_player: Query<&Transform, With<Player>>,
-    mut ev_item_pressed: EventReader<ItemPressed>,
+    mut ev_spawn_flora: EventReader<SpawnFloraEvent>,
 ) {
     let Ok(transform) = q_player.single() else {
-        debug_assert!(ev_item_pressed.is_empty());
+        debug_assert!(ev_spawn_flora.is_empty());
         return;
     };
 
-    for ev in ev_item_pressed.read() {
+    for ev in ev_spawn_flora.read() {
         let flora_data = map_data.flora_data(ev.flora.index());
         let pos = map_data.random_grid_position_near_player_pos(
             transform.translation.xy(),
@@ -160,10 +165,15 @@ fn spawn_flora_from_item_pressed(
 
 fn increment_progression_core_flora(
     mut core: ResMut<ProgressionCore>,
+    map_data: Res<MapData>,
     mut ev_item_pressed: EventReader<ItemPressed>,
+    mut ev_spawn_flora: EventWriter<SpawnFloraEvent>,
 ) {
     for ev in ev_item_pressed.read() {
-        core.flora[ev.flora.index()] += 1;
+        if core.is_affordable(&map_data, &ev.flora) {
+            core.flora[ev.flora.index()] += 1;
+            ev_spawn_flora.write(SpawnFloraEvent { flora: ev.flora });
+        }
     }
 }
 
@@ -192,21 +202,22 @@ pub struct MapFloraPlugin;
 
 impl Plugin for MapFloraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                spawn_flora_from_item_pressed
-                    .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
-                increment_progression_core_flora.run_if(resource_exists::<ProgressionCore>),
-            ),
-        )
-        .add_systems(
-            Update,
-            spawn_flora_on_map_data_insertion.run_if(
-                resource_exists::<GameAssets>
-                    .and(resource_exists::<MapData>)
-                    .and(run_once),
-            ),
-        );
+        app.add_event::<SpawnFloraEvent>()
+            .add_systems(
+                Update,
+                (
+                    spawn_flora_from_item_pressed
+                        .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
+                    increment_progression_core_flora.run_if(resource_exists::<ProgressionCore>),
+                ),
+            )
+            .add_systems(
+                Update,
+                spawn_flora_on_map_data_insertion.run_if(
+                    resource_exists::<GameAssets>
+                        .and(resource_exists::<MapData>)
+                        .and(run_once),
+                ),
+            );
     }
 }

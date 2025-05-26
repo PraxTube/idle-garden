@@ -12,7 +12,7 @@ pub const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -12.5);
 
 fn spawn_player(mut commands: Commands, assets: Res<GameAssets>) {
     commands.spawn((
-        Player,
+        Player::default(),
         PLAYER_COLLISION_GROUPS,
         Velocity::default(),
         DynamicCollider::new(COLLIDER_RADIUS, COLLIDER_OFFSET),

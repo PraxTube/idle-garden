@@ -62,7 +62,7 @@ pub enum ZLevel {
     Floor,
     // GroundEffect,
     // BottomEnvironment,
-    // TopEnvironment,
+    TopEnvironment,
     TopUi,
 }
 
@@ -74,6 +74,10 @@ impl ProgressionCore {
             pps: 0,
             flora: vec![0; Flora::len()],
         }
+    }
+
+    fn is_affordable(&self, map_data: &MapData, flora: &Flora) -> bool {
+        self.points >= map_data.flora_data(flora.index()).cost as u64
     }
 }
 
@@ -303,7 +307,7 @@ impl ZLevel {
             ZLevel::Floor => -3e4,
             // ZLevel::GroundEffect => -2e4,
             // ZLevel::BottomEnvironment => -1e4,
-            // ZLevel::TopEnvironment => 1e4,
+            ZLevel::TopEnvironment => 1e4,
             ZLevel::TopUi => 1e4 + 301.0,
         }
     }

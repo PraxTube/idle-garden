@@ -1,3 +1,5 @@
+pub mod utils;
+
 mod camera;
 mod collisions;
 mod debug;
@@ -6,7 +8,7 @@ mod map;
 pub use camera::{MainCamera, YSort};
 pub use collisions::{DynamicCollider, Velocity, PLAYER_COLLISION_GROUPS};
 pub use debug::DebugState;
-pub use map::{Flora, ProgressionCore};
+pub use map::{Flora, ProgressionCore, ZLevel};
 
 use bevy::prelude::*;
 

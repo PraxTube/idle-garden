@@ -1,5 +1,6 @@
 mod input;
 mod movement;
+mod slash;
 mod spawn;
 
 pub use input::{GamingInput, InputControllerSystem};
@@ -14,11 +15,14 @@ impl Plugin for PlayerPlugin {
             input::InputPlugin,
             spawn::PlayerSpawnPlugin,
             movement::PlayerMovementPlugin,
+            slash::PlayerSlashPlugin,
         ));
     }
 }
 
 const MOVE_SPEED: f32 = 200.0;
 
-#[derive(Component)]
-pub struct Player;
+#[derive(Component, Default)]
+pub struct Player {
+    pub is_over_ui: bool,
+}

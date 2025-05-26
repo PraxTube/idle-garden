@@ -2,6 +2,7 @@ use bevy::{
     color::palettes::css::{DARK_GRAY, GRAY},
     prelude::*,
     text::FontSmoothing,
+    ui::RelativeCursorPosition,
 };
 
 use crate::{
@@ -78,6 +79,7 @@ fn spawn_store(mut commands: Commands, assets: Res<GameAssets>) {
     commands.spawn((
         ChildOf(root),
         StoreBackground,
+        RelativeCursorPosition::default(),
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),

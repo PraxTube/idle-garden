@@ -1,4 +1,4 @@
-use bevy::{prelude::*, text::FontSmoothing};
+use bevy::{prelude::*, text::FontSmoothing, ui::RelativeCursorPosition};
 
 use crate::{world::ProgressionCore, GameAssets, GameState};
 
@@ -36,6 +36,7 @@ fn spawn_stats(mut commands: Commands, assets: Res<GameAssets>) {
 
     commands.spawn((
         ChildOf(root),
+        RelativeCursorPosition::default(),
         StatsBackground,
         Node {
             width: Val::Percent(100.0),

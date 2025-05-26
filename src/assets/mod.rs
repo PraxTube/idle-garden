@@ -11,6 +11,8 @@ pub const WASM_PROGRESSION_CORE_KEY_STORAGE: &str = "progression-core";
 pub struct GameAssets {
     #[asset(path = "player/player.png")]
     pub player: Handle<Image>,
+    #[asset(path = "player/slash.png")]
+    pub slash: Handle<Image>,
 
     // --- UI ---
     #[asset(
