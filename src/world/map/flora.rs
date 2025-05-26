@@ -7,7 +7,7 @@ use crate::{
     ui::ItemPressed,
     world::{
         camera::YSort,
-        collisions::{StaticCollider, WORLD_COLLISION_GROUPS},
+        collisions::{IntersectionEvent, StaticCollider, WORLD_COLLISION_GROUPS},
         TILE_SIZE,
     },
     GameAssets,
@@ -198,26 +198,34 @@ fn spawn_flora_on_map_data_insertion(
     }
 }
 
+fn cut_tall_grass(
+    mut commands: Commands,
+    mut core: ResMut<ProgressionCore>,
+    mut ev_intersection: EventReader<IntersectionEvent>,
+) {
+    for ev in ev_intersection.read() {
+        core.points += 1;
+        commands.entity(ev.aabb).despawn();
+    }
+}
+
 pub struct MapFloraPlugin;
 
 impl Plugin for MapFloraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SpawnFloraEvent>()
-            .add_systems(
-                Update,
-                (
-                    spawn_flora_from_item_pressed
-                        .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
-                    increment_progression_core_flora.run_if(resource_exists::<ProgressionCore>),
-                ),
-            )
-            .add_systems(
-                Update,
+        app.add_event::<SpawnFloraEvent>().add_systems(
+            Update,
+            (
+                spawn_flora_from_item_pressed
+                    .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
+                increment_progression_core_flora.run_if(resource_exists::<ProgressionCore>),
                 spawn_flora_on_map_data_insertion.run_if(
                     resource_exists::<GameAssets>
                         .and(resource_exists::<MapData>)
                         .and(run_once),
                 ),
-            );
+                cut_tall_grass.run_if(resource_exists::<ProgressionCore>),
+            ),
+        );
     }
 }

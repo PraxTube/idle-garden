@@ -1,7 +1,7 @@
 use bevy::{prelude::*, ui::RelativeCursorPosition};
 
 use crate::{
-    world::{utils::quat_from_vec2, ZLevel},
+    world::{utils::quat_from_vec2, StaticSensorCircle, ZLevel, SLASH_COLLISION_GROUPS},
     GameAssets,
 };
 
@@ -49,6 +49,8 @@ fn spawn_slash(
         Transform::from_translation(pos.extend(ZLevel::TopEnvironment.value()))
             .with_rotation(quat_from_vec2(gaming_input.aim_direction)),
         Sprite::from_image(assets.slash.clone()),
+        StaticSensorCircle::new(8.0, Vec2::ZERO),
+        SLASH_COLLISION_GROUPS,
     ));
 }
 

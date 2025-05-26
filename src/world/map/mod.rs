@@ -12,7 +12,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{assets::FLORA_DATA_CORE, GameAssets, GameState};
 
-use super::TILE_SIZE;
+use super::{
+    collisions::{CollisionGroups, StaticSensorAABB, GRASS_COLLISION_GROUPS},
+    TILE_SIZE,
+};
 
 const MAP_SIZE: usize = 500;
 const MAX_RANDOM_SEARCH_TRIES: usize = 50;
@@ -327,6 +330,8 @@ fn spawn_grass(mut commands: Commands, assets: Res<GameAssets>) {
             commands.spawn((
                 Transform::from_translation(pos.extend(ZLevel::Floor.value())),
                 Sprite::from_image(assets.grass.clone()),
+                StaticSensorAABB::new(8.0, 8.0),
+                GRASS_COLLISION_GROUPS,
             ));
         }
     }

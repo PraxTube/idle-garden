@@ -1,8 +1,10 @@
 mod debug;
 mod detection;
+mod intersection;
 mod response;
 mod structs;
 
+pub use intersection::IntersectionEvent;
 pub use structs::*;
 
 use bevy::{color::palettes::css::BLUE, prelude::*};
@@ -16,20 +18,22 @@ pub struct WorldCollisionPlugin;
 
 impl Plugin for WorldCollisionPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets(
-            PostUpdate,
-            CollisionSystemSet.before(CameraSystemSet::first()),
-        )
-        .add_systems(
-            PostUpdate,
-            (
-                update_velocities_with_collision.run_if(in_state(GameState::Gaming)),
-                update_transforms.run_if(in_state(GameState::Gaming)),
-                debug::visualize_colliders,
+        app.add_plugins(intersection::IntersectionPlugin)
+            .configure_sets(
+                PostUpdate,
+                CollisionSystemSet.before(CameraSystemSet::first()),
             )
-                .chain()
-                .in_set(CollisionSystemSet),
-        );
+            .add_systems(
+                PostUpdate,
+                (
+                    update_velocities_with_collision.run_if(in_state(GameState::Gaming)),
+                    update_transforms.run_if(in_state(GameState::Gaming)),
+                    debug::visualize_colliders,
+                    debug::visualize_sensors,
+                )
+                    .chain()
+                    .in_set(CollisionSystemSet),
+            );
     }
 }
 
@@ -56,7 +60,7 @@ fn update_velocities_with_collision(
             continue;
         }
 
-        let circle_pos = circle_transform.translation.xy() + circle.offset();
+        let circle_pos = circle_transform.translation.xy() + circle.offset;
 
         let mut rects = Vec::new();
         for (rect_transform, rect, collision_groups) in &q_static_colliders {
@@ -79,7 +83,7 @@ fn update_velocities_with_collision(
                 continue;
             }
 
-            let pos = circle_collider_transform.translation.xy() + circle_collider.offset();
+            let pos = circle_collider_transform.translation.xy() + circle_collider.offset;
             circle_colliders.push((pos, circle_collider.radius));
         }
 
