@@ -1,3 +1,4 @@
+mod stats;
 mod store;
 
 pub use store::ItemPressed;
@@ -10,7 +11,7 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(store::UiStorePlugin)
+        app.add_plugins((stats::UiStatsPlugin, store::UiStorePlugin))
             .add_systems(Update, scale_ui);
     }
 }

@@ -1,13 +1,16 @@
 mod debug;
 mod flora;
 
+use std::{collections::HashMap, time::Duration};
+
 pub use flora::Flora;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, time::common_conditions::on_timer};
+use flora::FloraData;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 
-use crate::{GameAssets, GameState};
+use crate::{assets::FLORA_DATA_CORE, GameAssets, GameState};
 
 use super::TILE_SIZE;
 
@@ -25,12 +28,17 @@ impl Plugin for MapPlugin {
             .add_systems(OnExit(GameState::AssetLoading), spawn_grass)
             .add_systems(
                 OnExit(GameState::AssetLoading),
-                (insert_progression_core, insert_map_grid_resource),
+                (insert_progression_core, insert_map_data_resource),
             )
             .add_systems(
                 Update,
-                save_game_state
-                    .run_if(resource_exists::<MapGrid>.and(resource_exists::<ProgressionCore>)),
+                (
+                    update_points_per_second,
+                    add_points.run_if(on_timer(Duration::from_secs(1))),
+                    save_game_state,
+                )
+                    .chain()
+                    .run_if(resource_exists::<MapData>.and(resource_exists::<ProgressionCore>)),
             );
     }
 }
@@ -38,12 +46,15 @@ impl Plugin for MapPlugin {
 #[derive(Resource, Serialize, Deserialize)]
 pub struct ProgressionCore {
     previous_timestamp: u64,
+    pub points: u64,
+    pub pps: u32,
     pub flora: Vec<u16>,
 }
 
 #[derive(Resource)]
-pub struct MapGrid {
+pub struct MapData {
     grid: Vec<[u16; MAP_SIZE]>,
+    flora_data: Vec<FloraData>,
 }
 
 pub enum ZLevel {
@@ -59,15 +70,34 @@ impl ProgressionCore {
     fn empty() -> Self {
         Self {
             previous_timestamp: 0,
+            points: 0,
+            pps: 0,
             flora: vec![0; Flora::len()],
         }
     }
 }
 
-impl MapGrid {
+impl MapData {
+    fn build_flora_data() -> Vec<FloraData> {
+        let map: HashMap<Flora, FloraData> = serde_json::from_str(FLORA_DATA_CORE)
+            .expect("failed to parse flora data core to json str");
+
+        let mut data = vec![FloraData::default(); Flora::len()];
+
+        for key in map.keys() {
+            data[key.index()] = map
+                .get(key)
+                .expect("failed to get key, must never happen")
+                .clone();
+        }
+
+        data
+    }
+
     fn empty() -> Self {
         Self {
             grid: vec![[u16::MAX; MAP_SIZE]; MAP_SIZE],
+            flora_data: Self::build_flora_data(),
         }
     }
 
@@ -75,10 +105,10 @@ impl MapGrid {
     ///
     /// usize,usize:u16;REPEAT
     fn from_str(string: &str) -> Self {
-        let mut map_grid = MapGrid::empty();
+        let mut map_data = MapData::empty();
 
         if string.is_empty() {
-            return map_grid;
+            return map_data;
         }
 
         for raw_data_point in string.split(';').collect::<Vec<&str>>() {
@@ -98,10 +128,10 @@ impl MapGrid {
                 .parse::<u16>()
                 .expect("failed to parse value to u16");
 
-            map_grid.grid[x][y] = value;
+            map_data.grid[x][y] = value;
         }
 
-        map_grid
+        map_data
     }
 
     fn to_string(&self) -> String {
@@ -141,6 +171,17 @@ impl MapGrid {
 
     pub fn grid_index(&self, x: usize, y: usize) -> u16 {
         self.grid[x.min(MAP_SIZE - 1)][y.min(MAP_SIZE - 1)]
+    }
+
+    pub fn flora_data(&self, index: usize) -> FloraData {
+        debug_assert!(index < self.flora_data.len());
+
+        if index >= self.flora_data.len() {
+            error!("attempted to get flora data from index out of range, must never happen!");
+            return FloraData::default();
+        }
+
+        self.flora_data[index].clone()
     }
 
     fn fits_at_grid_position(&self, x: usize, y: usize, x_size: usize, y_size: usize) -> bool {
@@ -229,7 +270,7 @@ impl MapGrid {
         self.grid_indices_to_pos(0, 0)
     }
 
-    fn set_map_grid_value_at_pos(
+    fn set_map_data_value_at_pos(
         &mut self,
         bottom_left_corner_pos: Vec2,
         object_size: (usize, usize),
@@ -288,8 +329,8 @@ fn spawn_grass(mut commands: Commands, assets: Res<GameAssets>) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn insert_map_grid_resource_wasm(commands: &mut Commands) {
-    use crate::assets::WASM_MAP_GRID_KEY_STORAGE;
+fn insert_map_data_resource_wasm(commands: &mut Commands) {
+    use crate::assets::WASM_MAP_DATA_KEY_STORAGE;
 
     use web_sys::window;
 
@@ -299,23 +340,23 @@ fn insert_map_grid_resource_wasm(commands: &mut Commands) {
         .expect("failed to get local storage")
         .expect("failed to unwrap local storage");
 
-    let map_grid = match storage
-        .get_item(WASM_MAP_GRID_KEY_STORAGE)
+    let map_data = match storage
+        .get_item(WASM_MAP_DATA_KEY_STORAGE)
         .expect("failed to get local storage item WASM key")
     {
-        Some(r) => MapGrid::from_str(&r),
-        None => MapGrid::empty(),
+        Some(r) => MapData::from_str(&r),
+        None => MapData::empty(),
     };
 
-    commands.insert_resource(map_grid);
+    commands.insert_resource(map_data);
 }
 
-fn insert_map_grid_resource(mut commands: Commands) {
+fn insert_map_data_resource(mut commands: Commands) {
     #[cfg(target_arch = "wasm32")]
-    insert_map_grid_resource_wasm(&mut commands);
+    insert_map_data_resource_wasm(&mut commands);
 
     #[cfg(not(target_arch = "wasm32"))]
-    commands.insert_resource(MapGrid::empty());
+    commands.insert_resource(MapData::empty());
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -352,8 +393,8 @@ fn insert_progression_core(mut commands: Commands) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn save_game_state_wasm(core: &ProgressionCore, map_grid: &MapGrid) {
-    use crate::assets::{WASM_MAP_GRID_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE};
+fn save_game_state_wasm(core: &ProgressionCore, map_data: &MapData) {
+    use crate::assets::{WASM_MAP_DATA_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE};
 
     use web_sys::window;
 
@@ -364,7 +405,7 @@ fn save_game_state_wasm(core: &ProgressionCore, map_grid: &MapGrid) {
         .expect("failed to unwrap local storage");
 
     storage
-        .set_item(WASM_MAP_GRID_KEY_STORAGE, &map_grid.to_string())
+        .set_item(WASM_MAP_DATA_KEY_STORAGE, &map_data.to_string())
         .expect("failed to set local storage progression core");
 
     storage
@@ -375,37 +416,54 @@ fn save_game_state_wasm(core: &ProgressionCore, map_grid: &MapGrid) {
         .expect("failed to set local storage progression core");
 }
 
-fn save_game_state(core: Res<ProgressionCore>, map_grid: Res<MapGrid>) {
+fn save_game_state(core: Res<ProgressionCore>, map_data: Res<MapData>) {
     #[cfg(target_arch = "wasm32")]
-    save_game_state_wasm(&core, &map_grid);
+    save_game_state_wasm(&core, &map_data);
+}
+
+fn update_points_per_second(mut core: ResMut<ProgressionCore>, map_data: Res<MapData>) {
+    let mut pps = 0;
+    for i in 0..core.flora.len() {
+        if core.flora[i] == 0 {
+            continue;
+        }
+
+        pps += core.flora[i] as u32 * map_data.flora_data(i).pps;
+    }
+
+    core.pps = pps;
+}
+
+fn add_points(mut core: ResMut<ProgressionCore>) {
+    core.points += core.pps as u64;
 }
 
 #[test]
 fn validate_pos_to_grid_indices() {
-    let map_grid = MapGrid::empty();
+    let map_data = MapData::empty();
 
     assert_eq!(
-        map_grid.pos_to_grid_indices(Vec2::ZERO),
+        map_data.pos_to_grid_indices(Vec2::ZERO),
         (MAP_SIZE / 2, MAP_SIZE / 2)
     );
 
     assert_eq!(
-        map_grid.pos_to_grid_indices(-Vec2::ONE * TILE_SIZE * MAP_SIZE as f32),
+        map_data.pos_to_grid_indices(-Vec2::ONE * TILE_SIZE * MAP_SIZE as f32),
         (0, 0)
     );
 
     assert_eq!(
-        map_grid.pos_to_grid_indices(Vec2::ONE * TILE_SIZE * MAP_SIZE as f32),
+        map_data.pos_to_grid_indices(Vec2::ONE * TILE_SIZE * MAP_SIZE as f32),
         (MAP_SIZE - 1, MAP_SIZE - 1)
     );
 
     assert_eq!(
-        map_grid.pos_to_grid_indices(Vec2::ONE * TILE_SIZE),
+        map_data.pos_to_grid_indices(Vec2::ONE * TILE_SIZE),
         (MAP_SIZE / 2 + 1, MAP_SIZE / 2 + 1)
     );
 
     assert_eq!(
-        map_grid.pos_to_grid_indices(
+        map_data.pos_to_grid_indices(
             -Vec2::ONE * 0.5 * TILE_SIZE * MAP_SIZE as f32 + Vec2::ONE * TILE_SIZE
         ),
         (1, 1)
@@ -414,56 +472,56 @@ fn validate_pos_to_grid_indices() {
 
 #[test]
 fn validate_grid_indices_to_pos() {
-    let map_grid = MapGrid::empty();
+    let map_data = MapData::empty();
 
     assert_eq!(
-        map_grid.grid_indices_to_pos(0, 0),
+        map_data.grid_indices_to_pos(0, 0),
         -Vec2::ONE * TILE_SIZE * 0.5 * MAP_SIZE as f32
     );
     assert_eq!(
-        map_grid.grid_indices_to_pos(MAP_SIZE / 2, MAP_SIZE / 2),
+        map_data.grid_indices_to_pos(MAP_SIZE / 2, MAP_SIZE / 2),
         Vec2::ZERO
     );
     assert_eq!(
-        map_grid.grid_indices_to_pos(MAP_SIZE / 2 + 1, MAP_SIZE / 2),
+        map_data.grid_indices_to_pos(MAP_SIZE / 2 + 1, MAP_SIZE / 2),
         Vec2::new(TILE_SIZE, 0.0)
     );
 }
 
 #[test]
 fn validate_grid_index() {
-    let map_grid = MapGrid::empty();
+    let map_data = MapData::empty();
 
-    map_grid.grid_index(0, 0);
-    map_grid.grid_index(MAP_SIZE, 0);
-    map_grid.grid_index(MAP_SIZE + 100, 0);
-    map_grid.grid_index(MAP_SIZE + 100, MAP_SIZE);
-    map_grid.grid_index(MAP_SIZE + 100, MAP_SIZE + 100);
+    map_data.grid_index(0, 0);
+    map_data.grid_index(MAP_SIZE, 0);
+    map_data.grid_index(MAP_SIZE + 100, 0);
+    map_data.grid_index(MAP_SIZE + 100, MAP_SIZE);
+    map_data.grid_index(MAP_SIZE + 100, MAP_SIZE + 100);
 }
 
 #[test]
 fn validate_grid_position_from_player_pos() {
-    let map_grid = MapGrid::empty();
+    let map_data = MapData::empty();
 
     assert_ne!(
-        map_grid.grid_position_from_player_pos(Vec2::ZERO, (2, 1)),
+        map_data.grid_position_from_player_pos(Vec2::ZERO, (2, 1)),
         Vec2::ZERO
     );
 }
 
 #[test]
 fn validate_random_grid_positions() {
-    let map_grid = MapGrid::empty();
+    let map_data = MapData::empty();
 
     for i in 0..10000 {
         assert_ne!(
-            map_grid.random_grid_position_near_player_pos(Vec2::ZERO, (2, 1)),
+            map_data.random_grid_position_near_player_pos(Vec2::ZERO, (2, 1)),
             Vec2::ZERO,
             "try: {}",
             i
         );
         assert_ne!(
-            map_grid.random_grid_position_near_player_pos(Vec2::ZERO, (1, 1)),
+            map_data.random_grid_position_near_player_pos(Vec2::ZERO, (1, 1)),
             Vec2::ZERO,
             "try: {}",
             i

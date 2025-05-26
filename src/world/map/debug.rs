@@ -8,7 +8,7 @@ use crate::{
     world::{DebugState, TILE_SIZE},
 };
 
-use super::{MapGrid, ZLevel};
+use super::{MapData, ZLevel};
 
 const DEBUG_GRID_SIZE: usize = 50;
 
@@ -29,7 +29,7 @@ fn toggle_grid_debug(mut debug_state: ResMut<DebugState>, gaming_input: Res<Gami
 fn spawn_grid_debug_visuals(
     mut commands: Commands,
     debug_state: Res<DebugState>,
-    map_grid: Res<MapGrid>,
+    map_data: Res<MapData>,
     q_player: Query<&Transform, With<Player>>,
 ) {
     let Ok(player_transform) = q_player.single() else {
@@ -40,22 +40,22 @@ fn spawn_grid_debug_visuals(
         return;
     }
 
-    let (player_x, player_y) = map_grid.pos_to_grid_indices(player_transform.translation.xy());
+    let (player_x, player_y) = map_data.pos_to_grid_indices(player_transform.translation.xy());
 
     for i in 0..DEBUG_GRID_SIZE {
         for j in 0..DEBUG_GRID_SIZE {
             let x = player_x.max(DEBUG_GRID_SIZE) + i - DEBUG_GRID_SIZE / 2;
             let y = player_y.max(DEBUG_GRID_SIZE) + j - DEBUG_GRID_SIZE / 2;
 
-            if map_grid.grid_index(x, y) == u16::MAX {
+            if map_data.grid_index(x, y) == u16::MAX {
                 continue;
             }
 
-            let pos = map_grid.grid_indices_to_pos(x, y);
+            let pos = map_data.grid_indices_to_pos(x, y);
 
             commands.spawn((
                 GridDebugVisual,
-                Text2d::new(format!("{}", map_grid.grid_index(x, y))),
+                Text2d::new(format!("{}", map_data.grid_index(x, y))),
                 TextFont {
                     font_size: 10.0,
                     ..default()
@@ -98,7 +98,7 @@ impl Plugin for MapDebugPlugin {
                 spawn_grid_debug_visuals,
             )
                 .chain()
-                .run_if(resource_exists::<MapGrid>),
+                .run_if(resource_exists::<MapData>),
         );
     }
 }

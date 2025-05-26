@@ -1,9 +1,8 @@
-use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::prelude::*;
 use serde::Deserialize;
 use strum::FromRepr;
 
 use crate::{
-    assets::FLORA_DATA_CORE,
     player::Player,
     ui::ItemPressed,
     world::{
@@ -14,15 +13,12 @@ use crate::{
     GameAssets,
 };
 
-use super::{MapGrid, ProgressionCore, MAP_SIZE};
+use super::{MapData, ProgressionCore, MAP_SIZE};
 
-#[derive(Resource, Deserialize)]
-struct FloraDataCore(HashMap<Flora, FloraData>);
-
-#[derive(Deserialize, Clone)]
-struct FloraData {
+#[derive(Deserialize, Clone, Default)]
+pub struct FloraData {
     cost: u32,
-    pps: u32,
+    pub pps: u32,
     ysort: f32,
     gfx_offset: (f32, f32),
     collider_size: (f32, f32),
@@ -39,17 +35,8 @@ pub enum Flora {
     Tree,
 }
 
-impl FloraDataCore {
-    fn flora_data(&self, flora: &Flora) -> FloraData {
-        self.0
-            .get(flora)
-            .expect("failed to get flora data from hashmap")
-            .clone()
-    }
-}
-
 impl Flora {
-    fn from_index(index: usize) -> Self {
+    pub fn from_index(index: usize) -> Self {
         match Self::from_repr(index) {
             Some(r) => r,
             None => {
@@ -144,8 +131,7 @@ fn spawn_flora(
 fn spawn_flora_from_item_pressed(
     mut commands: Commands,
     assets: Res<GameAssets>,
-    mut map_grid: ResMut<MapGrid>,
-    core: Res<FloraDataCore>,
+    mut map_data: ResMut<MapData>,
     q_player: Query<&Transform, With<Player>>,
     mut ev_item_pressed: EventReader<ItemPressed>,
 ) {
@@ -155,13 +141,13 @@ fn spawn_flora_from_item_pressed(
     };
 
     for ev in ev_item_pressed.read() {
-        let flora_data = core.flora_data(&ev.flora);
-        let pos = map_grid.random_grid_position_near_player_pos(
+        let flora_data = map_data.flora_data(ev.flora.index());
+        let pos = map_data.random_grid_position_near_player_pos(
             transform.translation.xy(),
             flora_data.size_on_grid(),
         );
 
-        map_grid.set_map_grid_value_at_pos(pos, flora_data.size_on_grid(), ev.flora.index() as u16);
+        map_data.set_map_data_value_at_pos(pos, flora_data.size_on_grid(), ev.flora.index() as u16);
         spawn_flora(
             &mut commands,
             &assets,
@@ -181,29 +167,21 @@ fn increment_progression_core_flora(
     }
 }
 
-fn insert_flora_data_core(mut commands: Commands) {
-    let core: FloraDataCore =
-        serde_json::from_str(FLORA_DATA_CORE).expect("failed to parse flora data core to json str");
-    commands.insert_resource(core);
-}
-
-fn spawn_flora_on_map_grid_insertion(
+fn spawn_flora_on_map_data_insertion(
     mut commands: Commands,
     assets: Res<GameAssets>,
-    core: Res<FloraDataCore>,
-    map_grid: Res<MapGrid>,
+    map_data: Res<MapData>,
 ) {
-    info!("spawn");
     for x in 0..MAP_SIZE {
         for y in 0..MAP_SIZE {
-            if map_grid.grid[x][y] == u16::MAX {
+            if map_data.grid[x][y] == u16::MAX {
                 continue;
             }
 
-            let pos = map_grid.grid_indices_to_pos(x, y);
+            let pos = map_data.grid_indices_to_pos(x, y);
 
-            let flora = Flora::from_index(map_grid.grid_index(x, y).into());
-            let flora_data = core.flora_data(&flora);
+            let flora = Flora::from_index(map_data.grid_index(x, y).into());
+            let flora_data = map_data.flora_data(flora.index());
 
             spawn_flora(&mut commands, &assets, pos, &flora, &flora_data);
         }
@@ -218,17 +196,15 @@ impl Plugin for MapFloraPlugin {
             Update,
             (
                 spawn_flora_from_item_pressed
-                    .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapGrid>)),
+                    .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
                 increment_progression_core_flora.run_if(resource_exists::<ProgressionCore>),
             ),
         )
-        .add_systems(Startup, insert_flora_data_core)
         .add_systems(
             Update,
-            spawn_flora_on_map_grid_insertion.run_if(
+            spawn_flora_on_map_data_insertion.run_if(
                 resource_exists::<GameAssets>
-                    .and(resource_exists::<MapGrid>)
-                    .and(resource_exists::<FloraDataCore>)
+                    .and(resource_exists::<MapData>)
                     .and(run_once),
             ),
         );

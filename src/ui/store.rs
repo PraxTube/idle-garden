@@ -11,10 +11,10 @@ use crate::{
 };
 
 const STORE_ROOT_PADDING_VERTICAL: f32 = 40.0;
-const STORE_ROOT_PADDING_HORIZONTAL: f32 = 100.0;
+const STORE_ROOT_PADDING_HORIZONTAL: f32 = 150.0;
 const STORE_HEIGHT: f32 = 75.0;
 const HORIZONTAL_ITEM_PADDING: f32 = 30.0;
-const NUMBER_OF_ITEMS_ON_PAGE: usize = 10;
+const NUMBER_OF_ITEMS_ON_PAGE: usize = 8;
 
 #[derive(Component)]
 struct StoreRoot;
@@ -66,7 +66,7 @@ fn spawn_store(mut commands: Commands, assets: Res<GameAssets>) {
             Node {
                 left: Val::Px(STORE_ROOT_PADDING_HORIZONTAL),
                 right: Val::Px(STORE_ROOT_PADDING_HORIZONTAL),
-                top: Val::Px(STORE_ROOT_PADDING_VERTICAL),
+                bottom: Val::Px(STORE_ROOT_PADDING_VERTICAL),
                 height: Val::Px(STORE_HEIGHT),
                 width: Val::Px(DEFAULT_WINDOW_WIDTH - 2.0 * STORE_ROOT_PADDING_HORIZONTAL),
                 position_type: PositionType::Absolute,
@@ -107,7 +107,6 @@ fn spawn_store(mut commands: Commands, assets: Res<GameAssets>) {
                 },
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
-                column_gap: Val::Auto,
                 position_type: PositionType::Absolute,
                 ..default()
             },
