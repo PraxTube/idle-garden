@@ -10,10 +10,10 @@ use flora::FloraData;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 
-use crate::{assets::FLORA_DATA_CORE, GameAssets, GameState};
+use crate::{assets::FLORA_DATA_CORE, ui::ItemPressed, GameAssets, GameState};
 
 use super::{
-    collisions::{CollisionGroups, StaticSensorAABB, GRASS_COLLISION_GROUPS},
+    collisions::{StaticSensorAABB, GRASS_COLLISION_GROUPS},
     TILE_SIZE,
 };
 
@@ -28,6 +28,7 @@ pub struct MapPlugin;
 impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((flora::MapFloraPlugin, debug::MapDebugPlugin))
+            .add_event::<ItemBought>()
             .add_systems(OnExit(GameState::AssetLoading), spawn_grass)
             .add_systems(
                 OnExit(GameState::AssetLoading),
@@ -36,6 +37,8 @@ impl Plugin for MapPlugin {
             .add_systems(
                 Update,
                 (
+                    trigger_item_bought,
+                    update_progression_core_on_item_bought,
                     update_points_per_second,
                     add_points.run_if(on_timer(Duration::from_secs(1))),
                     save_game_state,
@@ -69,6 +72,11 @@ pub enum ZLevel {
     TopUi,
 }
 
+#[derive(Event)]
+pub struct ItemBought {
+    item: Flora,
+}
+
 impl ProgressionCore {
     fn empty() -> Self {
         Self {
@@ -79,7 +87,7 @@ impl ProgressionCore {
         }
     }
 
-    fn is_affordable(&self, map_data: &MapData, flora: &Flora) -> bool {
+    pub fn is_affordable(&self, map_data: &MapData, flora: &Flora) -> bool {
         self.points >= map_data.flora_data(flora.index()).cost as u64
     }
 }
@@ -445,6 +453,32 @@ fn update_points_per_second(mut core: ResMut<ProgressionCore>, map_data: Res<Map
 
 fn add_points(mut core: ResMut<ProgressionCore>) {
     core.points += core.pps as u64;
+}
+
+fn trigger_item_bought(
+    core: Res<ProgressionCore>,
+    map_data: Res<MapData>,
+    mut ev_item_pressed: EventReader<ItemPressed>,
+    mut ev_item_bought: EventWriter<ItemBought>,
+) {
+    for ev in ev_item_pressed.read() {
+        if core.is_affordable(&map_data, &ev.flora) {
+            ev_item_bought.write(ItemBought { item: ev.flora });
+        }
+    }
+}
+
+fn update_progression_core_on_item_bought(
+    mut core: ResMut<ProgressionCore>,
+    map_data: Res<MapData>,
+    mut ev_item_bought: EventReader<ItemBought>,
+) {
+    for ev in ev_item_bought.read() {
+        debug_assert!(core.points >= map_data.flora_data(ev.item.index()).cost as u64);
+
+        core.flora[ev.item.index()] += 1;
+        core.points -= (map_data.flora_data(ev.item.index()).cost as u64).min(core.points);
+    }
 }
 
 #[test]

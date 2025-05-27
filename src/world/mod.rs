@@ -10,7 +10,7 @@ pub use collisions::{
     DynamicCollider, StaticSensorCircle, Velocity, PLAYER_COLLISION_GROUPS, SLASH_COLLISION_GROUPS,
 };
 pub use debug::DebugState;
-pub use map::{Flora, ProgressionCore, ZLevel};
+pub use map::{Flora, MapData, ProgressionCore, ZLevel};
 
 use bevy::prelude::*;
 

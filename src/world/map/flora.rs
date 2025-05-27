@@ -4,7 +4,6 @@ use strum::FromRepr;
 
 use crate::{
     player::Player,
-    ui::ItemPressed,
     world::{
         camera::YSort,
         collisions::{IntersectionEvent, StaticCollider, WORLD_COLLISION_GROUPS},
@@ -13,7 +12,7 @@ use crate::{
     GameAssets,
 };
 
-use super::{MapData, ProgressionCore, MAP_SIZE};
+use super::{ItemBought, MapData, ProgressionCore, MAP_SIZE};
 
 #[derive(Deserialize, Clone, Default)]
 pub struct FloraData {
@@ -33,11 +32,6 @@ pub enum Flora {
     Carrot,
     Sunflower,
     Tree,
-}
-
-#[derive(Event)]
-struct SpawnFloraEvent {
-    flora: Flora,
 }
 
 impl Flora {
@@ -138,42 +132,28 @@ fn spawn_flora_from_item_pressed(
     assets: Res<GameAssets>,
     mut map_data: ResMut<MapData>,
     q_player: Query<&Transform, With<Player>>,
-    mut ev_spawn_flora: EventReader<SpawnFloraEvent>,
+    mut ev_item_bought: EventReader<ItemBought>,
 ) {
     let Ok(transform) = q_player.single() else {
-        debug_assert!(ev_spawn_flora.is_empty());
+        debug_assert!(ev_item_bought.is_empty());
         return;
     };
 
-    for ev in ev_spawn_flora.read() {
-        let flora_data = map_data.flora_data(ev.flora.index());
+    for ev in ev_item_bought.read() {
+        let flora_data = map_data.flora_data(ev.item.index());
         let pos = map_data.random_grid_position_near_player_pos(
             transform.translation.xy(),
             flora_data.size_on_grid(),
         );
 
-        map_data.set_map_data_value_at_pos(pos, flora_data.size_on_grid(), ev.flora.index() as u16);
+        map_data.set_map_data_value_at_pos(pos, flora_data.size_on_grid(), ev.item.index() as u16);
         spawn_flora(
             &mut commands,
             &assets,
             pos + flora_data.size_offset(),
-            &ev.flora,
+            &ev.item,
             &flora_data,
         );
-    }
-}
-
-fn increment_progression_core_flora(
-    mut core: ResMut<ProgressionCore>,
-    map_data: Res<MapData>,
-    mut ev_item_pressed: EventReader<ItemPressed>,
-    mut ev_spawn_flora: EventWriter<SpawnFloraEvent>,
-) {
-    for ev in ev_item_pressed.read() {
-        if core.is_affordable(&map_data, &ev.flora) {
-            core.flora[ev.flora.index()] += 1;
-            ev_spawn_flora.write(SpawnFloraEvent { flora: ev.flora });
-        }
     }
 }
 
@@ -213,12 +193,11 @@ pub struct MapFloraPlugin;
 
 impl Plugin for MapFloraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SpawnFloraEvent>().add_systems(
+        app.add_systems(
             Update,
             (
                 spawn_flora_from_item_pressed
                     .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
-                increment_progression_core_flora.run_if(resource_exists::<ProgressionCore>),
                 spawn_flora_on_map_data_insertion.run_if(
                     resource_exists::<GameAssets>
                         .and(resource_exists::<MapData>)
