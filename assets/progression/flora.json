@@ -1,6 +1,6 @@
 {
   "Potatoe": {
-    "cost": 50,
+    "cost": 1,
     "pps": 1,
     "ysort": 0,
     "gfx_offset": [0, 8],

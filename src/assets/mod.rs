@@ -26,6 +26,9 @@ pub struct GameAssets {
     )]
     pub flora_icons: Vec<Handle<Image>>,
 
+    #[asset(path = "ui/building_grid.png")]
+    pub building_grid: Handle<Image>,
+
     // --- MAP ---
     #[asset(path = "map/grass.png")]
     pub grass: Handle<Image>,

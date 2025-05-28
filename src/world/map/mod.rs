@@ -1,3 +1,4 @@
+mod building;
 mod debug;
 mod flora;
 
@@ -27,25 +28,29 @@ pub struct MapPlugin;
 
 impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((flora::MapFloraPlugin, debug::MapDebugPlugin))
-            .add_event::<ItemBought>()
-            .add_systems(OnExit(GameState::AssetLoading), spawn_grass)
-            .add_systems(
-                OnExit(GameState::AssetLoading),
-                (insert_progression_core, insert_map_data_resource),
+        app.add_plugins((
+            flora::MapFloraPlugin,
+            debug::MapDebugPlugin,
+            building::MapBuildingPlugin,
+        ))
+        .add_event::<ItemBought>()
+        .add_systems(OnExit(GameState::AssetLoading), spawn_grass)
+        .add_systems(
+            OnExit(GameState::AssetLoading),
+            (insert_progression_core, insert_map_data_resource),
+        )
+        .add_systems(
+            Update,
+            (
+                trigger_item_bought,
+                update_progression_core_on_item_bought,
+                update_points_per_second,
+                add_points.run_if(on_timer(Duration::from_secs(1))),
+                save_game_state,
             )
-            .add_systems(
-                Update,
-                (
-                    trigger_item_bought,
-                    update_progression_core_on_item_bought,
-                    update_points_per_second,
-                    add_points.run_if(on_timer(Duration::from_secs(1))),
-                    save_game_state,
-                )
-                    .chain()
-                    .run_if(resource_exists::<MapData>.and(resource_exists::<ProgressionCore>)),
-            );
+                .chain()
+                .run_if(resource_exists::<MapData>.and(resource_exists::<ProgressionCore>)),
+        );
     }
 }
 

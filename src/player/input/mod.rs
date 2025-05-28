@@ -67,7 +67,7 @@ pub struct GamingInput {
 
     pub pause: bool,
 
-    mouse_world_coords: Vec2,
+    pub mouse_world_coords: Vec2,
 }
 
 impl BitOrAssign for GamingInput {

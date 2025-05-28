@@ -71,7 +71,7 @@ impl FloraData {
         YSort(self.ysort)
     }
 
-    fn gfx_offset(&self) -> Vec2 {
+    pub fn gfx_offset(&self) -> Vec2 {
         let (x, y) = self.gfx_offset;
         Vec2::new(x, y)
     }
