@@ -80,7 +80,7 @@ impl FloraData {
         StaticCollider::new(x, y)
     }
 
-    fn size_on_grid(&self) -> (usize, usize) {
+    pub fn size_on_grid(&self) -> (usize, usize) {
         let (x, y) = self.size_on_grid;
         debug_assert!(x > 0);
         debug_assert!(y > 0);

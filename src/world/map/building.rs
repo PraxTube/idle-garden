@@ -1,4 +1,7 @@
-use bevy::{color::palettes::css::BLUE, prelude::*};
+use bevy::{
+    color::palettes::css::{BLUE, RED},
+    prelude::*,
+};
 
 use crate::{
     player::GamingInput, ui::ItemPressed, world::TILE_SIZE, BachelorBuild, GameAssets, GameState,
@@ -14,6 +17,7 @@ pub struct BuildingSystemSet;
 #[derive(Component)]
 pub struct Blueprint {
     pub item: Flora,
+    pub fits_at_pos: bool,
 }
 #[derive(Component)]
 struct BuildingGrid;
@@ -32,7 +36,10 @@ fn spawn_blueprint_item(
     for ev in ev_item_pressed.read() {
         let root = commands
             .spawn((
-                Blueprint { item: ev.flora },
+                Blueprint {
+                    item: ev.flora,
+                    fits_at_pos: false,
+                },
                 Visibility::Inherited,
                 Transform::from_xyz(0.0, 0.0, ZLevel::TopUi.value()),
             ))
@@ -46,11 +53,7 @@ fn spawn_blueprint_item(
                     .gfx_offset()
                     .extend(0.0),
             ),
-            Sprite {
-                image: assets.flora_images[ev.flora.index()].clone(),
-                color: BLUE.into(),
-                ..default()
-            },
+            Sprite::from_image(assets.flora_images[ev.flora.index()].clone()),
         ));
     }
 }
@@ -58,15 +61,22 @@ fn spawn_blueprint_item(
 fn move_blueprint(
     gaming_input: Res<GamingInput>,
     map_data: Res<MapData>,
-    mut q_blueprints: Query<&mut Transform, With<Blueprint>>,
+    mut q_blueprint: Query<(&mut Transform, &mut Blueprint)>,
 ) {
     let (x, y) = map_data.pos_to_grid_indices(gaming_input.mouse_world_coords);
     let pos = map_data.grid_indices_to_pos(x, y);
 
-    for mut transform in &mut q_blueprints {
-        transform.translation.x = pos.x;
-        transform.translation.y = pos.y;
-    }
+    let Ok((mut transform, mut blueprint)) = q_blueprint.single_mut() else {
+        return;
+    };
+
+    transform.translation.x = pos.x;
+    transform.translation.y = pos.y;
+
+    blueprint.fits_at_pos = map_data.fits_at_pos(
+        transform.translation.xy(),
+        map_data.flora_data(blueprint.item.index()).size_on_grid(),
+    );
 }
 
 fn spawn_building_grid(mut commands: Commands, assets: Res<GameAssets>) {
@@ -111,6 +121,29 @@ fn despawn_blueprint(mut commands: Commands, q_blueprint: Query<Entity, With<Blu
     }
 }
 
+fn update_blueprint_color(
+    q_blueprint: Query<(&Children, &Blueprint)>,
+    mut q_sprites: Query<&mut Sprite>,
+) {
+    let Ok((children, blueprint)) = q_blueprint.single() else {
+        return;
+    };
+
+    for child in children {
+        let Ok(mut sprite) = q_sprites.get_mut(child.entity()) else {
+            continue;
+        };
+
+        let color = if blueprint.fits_at_pos {
+            BLUE.into()
+        } else {
+            RED.into()
+        };
+
+        sprite.color = color;
+    }
+}
+
 pub struct MapBuildingPlugin;
 
 impl Plugin for MapBuildingPlugin {
@@ -119,12 +152,14 @@ impl Plugin for MapBuildingPlugin {
             .add_systems(
                 Update,
                 (
+                    despawn_blueprint.run_if(on_event::<ItemPressed>),
                     spawn_blueprint_item.run_if(
                         resource_exists::<GameAssets>.and(resource_exists::<BachelorBuild>),
                     ),
                     move_blueprint.run_if(resource_exists::<MapData>),
                     display_building_grid,
                     despawn_blueprint.run_if(on_event::<ItemBought>),
+                    update_blueprint_color,
                 )
                     .chain()
                     .in_set(BuildingSystemSet)

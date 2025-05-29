@@ -227,6 +227,12 @@ impl MapData {
         true
     }
 
+    fn fits_at_pos(&self, pos: Vec2, object_size: (usize, usize)) -> bool {
+        let (x, y) = self.pos_to_grid_indices(pos);
+        let (x_size, y_size) = object_size;
+        self.fits_at_grid_position(x, y, x_size, y_size)
+    }
+
     fn set_map_data_value_at_pos(
         &mut self,
         bottom_left_corner_pos: Vec2,
@@ -445,6 +451,10 @@ fn trigger_item_bought_on_blueprint_build(
     let Ok((transform, blueprint)) = q_blueprint.single() else {
         return;
     };
+
+    if !blueprint.fits_at_pos {
+        return;
+    }
 
     if core.is_affordable(&map_data, &blueprint.item) {
         ev_item_bought.write(ItemBought {
