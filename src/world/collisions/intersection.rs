@@ -46,7 +46,12 @@ fn relay_intersection_events(
     }
 }
 
-fn intersection_aabb_circle(radius: f32, circle_center: Vec2, k: Vec2, rect_center: Vec2) -> bool {
+pub fn intersection_aabb_circle(
+    radius: f32,
+    circle_center: Vec2,
+    k: Vec2,
+    rect_center: Vec2,
+) -> bool {
     let mut c = circle_center - rect_center;
 
     let mut sign = [1.0; 2];

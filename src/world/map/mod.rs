@@ -20,11 +20,13 @@ use crate::{
 };
 
 use super::{
-    collisions::{StaticSensorAABB, GRASS_COLLISION_GROUPS},
-    TILE_SIZE,
+    collisions::{intersection_aabb_circle, StaticSensorAABB, GRASS_COLLISION_GROUPS},
+    DynamicCollider, TILE_SIZE,
 };
 
 const MAP_SIZE: usize = 500;
+const EMPTY_CELL_VALUE: u16 = u16::MAX;
+const PLAYER_BLOCKED_CELL_VALUE: u16 = u16::MAX - 1;
 
 pub struct MapPlugin;
 
@@ -44,6 +46,7 @@ impl Plugin for MapPlugin {
         .add_systems(
             Update,
             (
+                block_grid_player_pos,
                 trigger_item_bought_on_item_pressed.run_if(resource_exists::<BachelorBuild>),
                 trigger_item_bought_on_blueprint_build.run_if(resource_exists::<BachelorBuild>),
                 update_progression_core_on_item_bought,
@@ -73,6 +76,7 @@ pub struct ProgressionCore {
 pub struct MapData {
     grid: Vec<[u16; MAP_SIZE]>,
     flora_data: Vec<FloraData>,
+    previous_player_blocked_cells: Vec<(usize, usize)>,
 }
 
 pub enum ZLevel {
@@ -124,8 +128,9 @@ impl MapData {
 
     fn empty() -> Self {
         Self {
-            grid: vec![[u16::MAX; MAP_SIZE]; MAP_SIZE],
+            grid: vec![[EMPTY_CELL_VALUE; MAP_SIZE]; MAP_SIZE],
             flora_data: Self::build_flora_data(),
+            previous_player_blocked_cells: Vec::new(),
         }
     }
 
@@ -167,7 +172,7 @@ impl MapData {
 
         for x in 0..MAP_SIZE {
             for y in 0..MAP_SIZE {
-                if self.grid_index(x, y) == u16::MAX {
+                if self.grid_index(x, y) == EMPTY_CELL_VALUE {
                     continue;
                 }
 
@@ -213,13 +218,13 @@ impl MapData {
     }
 
     fn fits_at_grid_position(&self, x: usize, y: usize, x_size: usize, y_size: usize) -> bool {
-        if self.grid_index(x, y) != u16::MAX {
+        if self.grid_index(x, y) != EMPTY_CELL_VALUE {
             return false;
         }
 
         for inner_x in 0..x_size {
             for inner_y in 0..y_size {
-                if self.grid_index(x + inner_x, y + inner_y) != u16::MAX {
+                if self.grid_index(x + inner_x, y + inner_y) != EMPTY_CELL_VALUE {
                     return false;
                 }
             }
@@ -475,6 +480,45 @@ fn update_progression_core_on_item_bought(
         core.flora[ev.item.index()] += 1;
         core.points -= (map_data.flora_data(ev.item.index()).cost as u64).min(core.points);
     }
+}
+
+fn block_grid_player_pos(
+    mut map_data: ResMut<MapData>,
+    q_player: Query<(&Transform, &DynamicCollider), With<Player>>,
+) {
+    let Ok((transform, collider)) = q_player.single() else {
+        return;
+    };
+
+    for (x, y) in map_data.previous_player_blocked_cells.clone() {
+        map_data.grid[x][y] = EMPTY_CELL_VALUE;
+    }
+
+    let pos = transform.translation.xy() + collider.offset;
+
+    let mut blocked_cells = Vec::new();
+    for x in -1..=1 {
+        for y in -1..=1 {
+            let offset = Vec2::new(TILE_SIZE * x as f32, TILE_SIZE * y as f32);
+            let (offset_x, offset_y) = map_data.pos_to_grid_indices(pos + offset);
+            let tile_pos = map_data.grid_indices_to_pos(offset_x, offset_y);
+
+            if !intersection_aabb_circle(
+                collider.radius,
+                pos,
+                0.5 * TILE_SIZE * Vec2::ONE,
+                tile_pos,
+            ) {
+                continue;
+            }
+
+            if map_data.grid[offset_x][offset_y] == EMPTY_CELL_VALUE {
+                map_data.grid[offset_x][offset_y] = PLAYER_BLOCKED_CELL_VALUE;
+                blocked_cells.push((offset_x, offset_y));
+            }
+        }
+    }
+    map_data.previous_player_blocked_cells = blocked_cells;
 }
 
 #[test]
