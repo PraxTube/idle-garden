@@ -3,13 +3,12 @@ use serde::Deserialize;
 use strum::FromRepr;
 
 use crate::{
-    player::Player,
     world::{
         camera::YSort,
         collisions::{IntersectionEvent, StaticCollider, WORLD_COLLISION_GROUPS},
         TILE_SIZE,
     },
-    GameAssets,
+    BachelorBuild, GameAssets,
 };
 
 use super::{ItemBought, MapData, ProgressionCore, MAP_SIZE};
@@ -88,6 +87,9 @@ impl FloraData {
         (x, y)
     }
 
+    /// Offset that will center the item based on its grid size.
+    /// Has nothing to do with the `gfx_offset`, they are two separate things.
+    /// Altough they are often very similar.
     fn size_offset(&self) -> Vec2 {
         let (x, y) = self.size_on_grid;
 
@@ -127,24 +129,20 @@ fn spawn_flora(
     ));
 }
 
-fn spawn_flora_from_item_pressed(
+fn spawn_flora_on_item_bought(
     mut commands: Commands,
     assets: Res<GameAssets>,
     mut map_data: ResMut<MapData>,
-    q_player: Query<&Transform, With<Player>>,
+    bachelor_build: Res<BachelorBuild>,
     mut ev_item_bought: EventReader<ItemBought>,
 ) {
-    let Ok(transform) = q_player.single() else {
-        debug_assert!(ev_item_bought.is_empty());
+    if !bachelor_build.with_building {
         return;
-    };
+    }
 
     for ev in ev_item_bought.read() {
         let flora_data = map_data.flora_data(ev.item.index());
-        let pos = map_data.random_grid_position_near_player_pos(
-            transform.translation.xy(),
-            flora_data.size_on_grid(),
-        );
+        let pos = ev.pos;
 
         map_data.set_map_data_value_at_pos(pos, flora_data.size_on_grid(), ev.item.index() as u16);
         spawn_flora(
@@ -196,8 +194,10 @@ impl Plugin for MapFloraPlugin {
         app.add_systems(
             Update,
             (
-                spawn_flora_from_item_pressed
-                    .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
+                spawn_flora_on_item_bought.run_if(
+                    resource_exists::<GameAssets>
+                        .and(resource_exists::<MapData>.and(resource_exists::<BachelorBuild>)),
+                ),
                 spawn_flora_on_map_data_insertion.run_if(
                     resource_exists::<GameAssets>
                         .and(resource_exists::<MapData>)

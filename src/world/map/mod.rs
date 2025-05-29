@@ -4,6 +4,7 @@ mod flora;
 
 use std::{collections::HashMap, time::Duration};
 
+pub use building::{Blueprint, BuildingSystemSet};
 pub use flora::Flora;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
@@ -11,7 +12,12 @@ use flora::FloraData;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 
-use crate::{assets::FLORA_DATA_CORE, ui::ItemPressed, GameAssets, GameState};
+use crate::{
+    assets::FLORA_DATA_CORE,
+    player::{GamingInput, Player},
+    ui::ItemPressed,
+    BachelorBuild, GameAssets, GameState,
+};
 
 use super::{
     collisions::{StaticSensorAABB, GRASS_COLLISION_GROUPS},
@@ -19,10 +25,6 @@ use super::{
 };
 
 const MAP_SIZE: usize = 500;
-const MAX_RANDOM_SEARCH_TRIES: usize = 50;
-const GRID_SEARCH_SIZE: usize = 10;
-/// Amount of tiles the searching will avoid around the player. Inclusive.
-const GRID_PLAYER_PADDING: usize = 2;
 
 pub struct MapPlugin;
 
@@ -42,17 +44,22 @@ impl Plugin for MapPlugin {
         .add_systems(
             Update,
             (
-                trigger_item_bought,
+                trigger_item_bought_on_item_pressed.run_if(resource_exists::<BachelorBuild>),
+                trigger_item_bought_on_blueprint_build.run_if(resource_exists::<BachelorBuild>),
                 update_progression_core_on_item_bought,
                 update_points_per_second,
                 add_points.run_if(on_timer(Duration::from_secs(1))),
                 save_game_state,
             )
                 .chain()
+                .in_set(ProgressionSystemSet)
                 .run_if(resource_exists::<MapData>.and(resource_exists::<ProgressionCore>)),
         );
     }
 }
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ProgressionSystemSet;
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct ProgressionCore {
@@ -79,6 +86,7 @@ pub enum ZLevel {
 
 #[derive(Event)]
 pub struct ItemBought {
+    pos: Vec2,
     item: Flora,
 }
 
@@ -217,77 +225,6 @@ impl MapData {
             }
         }
         true
-    }
-
-    fn random_grid_position_near_player_pos(
-        &self,
-        player_pos: Vec2,
-        object_size: (usize, usize),
-    ) -> Vec2 {
-        let (x_size, y_size) = object_size;
-        debug_assert!(x_size > 0);
-        debug_assert!(y_size > 0);
-
-        let (player_x, player_y) = self.pos_to_grid_indices(player_pos);
-
-        let mut rng = thread_rng();
-        for _ in 0..MAX_RANDOM_SEARCH_TRIES {
-            let x = if rng.gen_bool(0.5) {
-                (player_x + rng.gen_range(GRID_PLAYER_PADDING + 1..GRID_SEARCH_SIZE))
-                    .min(MAP_SIZE - 1)
-            } else {
-                (player_x as i32 - rng.gen_range(GRID_PLAYER_PADDING + 1..GRID_SEARCH_SIZE) as i32)
-                    .max(0) as usize
-            };
-
-            let y = if rng.gen_bool(0.5) {
-                (player_y + rng.gen_range(GRID_PLAYER_PADDING + 1..GRID_SEARCH_SIZE))
-                    .min(MAP_SIZE - 1)
-            } else {
-                (player_y as i32 - rng.gen_range(GRID_PLAYER_PADDING + 1..GRID_SEARCH_SIZE) as i32)
-                    .max(0) as usize
-            };
-
-            if self.fits_at_grid_position(x, y, x_size, y_size) {
-                return self.grid_indices_to_pos(x, y);
-            }
-        }
-
-        self.grid_position_from_player_pos(player_pos, object_size)
-    }
-
-    fn grid_position_from_player_pos(&self, player_pos: Vec2, object_size: (usize, usize)) -> Vec2 {
-        let (x_size, y_size) = object_size;
-        debug_assert!(x_size > 0);
-        debug_assert!(y_size > 0);
-
-        let (player_x, player_y) = self.pos_to_grid_indices(player_pos);
-        let start_x = player_x.max(GRID_SEARCH_SIZE) - GRID_SEARCH_SIZE;
-        let start_y = player_y.max(GRID_SEARCH_SIZE) - GRID_SEARCH_SIZE;
-
-        for x in 0..2 * GRID_SEARCH_SIZE {
-            for y in 0..2 * GRID_SEARCH_SIZE {
-                if x >= GRID_SEARCH_SIZE - GRID_PLAYER_PADDING
-                    && x <= GRID_SEARCH_SIZE + GRID_PLAYER_PADDING
-                    && y > GRID_SEARCH_SIZE - GRID_PLAYER_PADDING
-                    && y < GRID_SEARCH_SIZE + GRID_PLAYER_PADDING
-                {
-                    continue;
-                }
-
-                if !self.fits_at_grid_position(start_x + x, start_y + y, x_size, y_size) {
-                    continue;
-                }
-
-                return self.grid_indices_to_pos(start_x + x, start_y + y);
-            }
-        }
-
-        // If we don't find any suitable position we just place it at the bottom left.
-        // This will obviously result in a bunch of flora adding up in the worst case,
-        // but that doesn't matter as the player is very luckily not going to ever see that
-        // anyways. And this is also only for the study.
-        self.grid_indices_to_pos(0, 0)
     }
 
     fn set_map_data_value_at_pos(
@@ -460,16 +397,60 @@ fn add_points(mut core: ResMut<ProgressionCore>) {
     core.points += core.pps as u64;
 }
 
-fn trigger_item_bought(
+fn trigger_item_bought_on_item_pressed(
     core: Res<ProgressionCore>,
     map_data: Res<MapData>,
+    bachelor_build: Res<BachelorBuild>,
     mut ev_item_pressed: EventReader<ItemPressed>,
     mut ev_item_bought: EventWriter<ItemBought>,
 ) {
+    if bachelor_build.with_building {
+        return;
+    }
+
     for ev in ev_item_pressed.read() {
         if core.is_affordable(&map_data, &ev.flora) {
-            ev_item_bought.write(ItemBought { item: ev.flora });
+            ev_item_bought.write(ItemBought {
+                pos: Vec2::ZERO,
+                item: ev.flora,
+            });
         }
+    }
+}
+
+fn trigger_item_bought_on_blueprint_build(
+    core: Res<ProgressionCore>,
+    map_data: Res<MapData>,
+    gaming_input: Res<GamingInput>,
+    bachelor_build: Res<BachelorBuild>,
+    q_player: Query<&Player>,
+    q_blueprint: Query<(&Transform, &Blueprint)>,
+    mut ev_item_bought: EventWriter<ItemBought>,
+) {
+    if !bachelor_build.with_building {
+        return;
+    }
+
+    if !gaming_input.confirm {
+        return;
+    }
+
+    let Ok(player) = q_player.single() else {
+        return;
+    };
+    if player.is_over_ui {
+        return;
+    };
+
+    let Ok((transform, blueprint)) = q_blueprint.single() else {
+        return;
+    };
+
+    if core.is_affordable(&map_data, &blueprint.item) {
+        ev_item_bought.write(ItemBought {
+            pos: transform.translation.xy(),
+            item: blueprint.item,
+        });
     }
 }
 
@@ -545,34 +526,4 @@ fn validate_grid_index() {
     map_data.grid_index(MAP_SIZE + 100, 0);
     map_data.grid_index(MAP_SIZE + 100, MAP_SIZE);
     map_data.grid_index(MAP_SIZE + 100, MAP_SIZE + 100);
-}
-
-#[test]
-fn validate_grid_position_from_player_pos() {
-    let map_data = MapData::empty();
-
-    assert_ne!(
-        map_data.grid_position_from_player_pos(Vec2::ZERO, (2, 1)),
-        Vec2::ZERO
-    );
-}
-
-#[test]
-fn validate_random_grid_positions() {
-    let map_data = MapData::empty();
-
-    for i in 0..10000 {
-        assert_ne!(
-            map_data.random_grid_position_near_player_pos(Vec2::ZERO, (2, 1)),
-            Vec2::ZERO,
-            "try: {}",
-            i
-        );
-        assert_ne!(
-            map_data.random_grid_position_near_player_pos(Vec2::ZERO, (1, 1)),
-            Vec2::ZERO,
-            "try: {}",
-            i
-        );
-    }
 }

@@ -27,11 +27,24 @@ const DEFAULT_WINDOW_WIDTH: f32 = 1280.0;
 pub enum GameState {
     #[default]
     AssetLoading,
+    BachelorToggle,
     Gaming,
 }
 
+#[derive(Resource)]
+pub struct BachelorBuild {
+    with_building: bool,
+}
+#[derive(Component)]
+struct BachelorBuildComponent;
+
 fn main() {
     App::new()
+        .add_systems(Startup, spawn_bachelor_toggle)
+        .add_systems(
+            Update,
+            continue_from_bachelor_state.run_if(in_state(GameState::BachelorToggle)),
+        )
         .add_plugins((DefaultPlugins
             .set(ImagePlugin::default_nearest())
             .set(AssetPlugin {
@@ -58,10 +71,57 @@ fn main() {
         .init_state::<GameState>()
         .add_loading_state(
             LoadingState::new(GameState::AssetLoading)
-                .continue_to_state(GameState::Gaming)
+                .continue_to_state(GameState::BachelorToggle)
                 .load_collection::<GameAssets>(),
         )
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_plugins((ui::UiPlugin, world::WorldPlugin, player::PlayerPlugin))
         .run();
+}
+
+fn spawn_bachelor_toggle(mut commands: Commands) {
+    commands.spawn((
+        BachelorBuildComponent,
+        GlobalZIndex(1),
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            ..default()
+        },
+        ImageNode {
+            image: Handle::<Image>::default(),
+            color: Color::BLACK,
+            ..default()
+        },
+    ));
+
+    commands.spawn((
+        BachelorBuildComponent,
+        GlobalZIndex(2),
+        Text::new("Select Build\nPress [1] to select WITHOUT building\nPress [2] to select WITH building."),
+        TextFont {
+            font_size: 35.0,
+            font_smoothing: bevy::text::FontSmoothing::None,
+            ..default()
+        },
+    ));
+}
+
+fn continue_from_bachelor_state(
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<GameState>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    q_bachelor_components: Query<Entity, With<BachelorBuildComponent>>,
+) {
+    if !keys.just_pressed(KeyCode::Digit1) && !keys.just_pressed(KeyCode::Digit2) {
+        return;
+    }
+
+    let with_building = !keys.just_pressed(KeyCode::Digit1) | keys.just_pressed(KeyCode::Digit2);
+    commands.insert_resource(BachelorBuild { with_building });
+    next_state.set(GameState::Gaming);
+
+    for entity in &q_bachelor_components {
+        commands.entity(entity).despawn();
+    }
 }

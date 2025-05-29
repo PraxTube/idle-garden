@@ -1,7 +1,10 @@
 use bevy::{prelude::*, ui::RelativeCursorPosition};
 
 use crate::{
-    world::{utils::quat_from_vec2, StaticSensorCircle, ZLevel, SLASH_COLLISION_GROUPS},
+    world::{
+        utils::quat_from_vec2, Blueprint, BuildingSystemSet, ProgressionSystemSet,
+        StaticSensorCircle, ZLevel, SLASH_COLLISION_GROUPS,
+    },
     GameAssets,
 };
 
@@ -27,9 +30,13 @@ fn spawn_slash(
     mut commands: Commands,
     assets: Res<GameAssets>,
     gaming_input: Res<GamingInput>,
+    q_blueprints: Query<&Blueprint>,
     q_player: Query<(&Transform, &Player)>,
 ) {
     if !gaming_input.slash {
+        return;
+    }
+    if !q_blueprints.is_empty() {
         return;
     }
 
@@ -95,7 +102,9 @@ impl Plugin for PlayerSlashPlugin {
                 update_player_is_over_ui,
                 spawn_slash.run_if(resource_exists::<GameAssets>),
             )
-                .chain(),
+                .chain()
+                .after(ProgressionSystemSet)
+                .before(BuildingSystemSet),
         );
     }
 }
