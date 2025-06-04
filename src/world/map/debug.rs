@@ -8,7 +8,7 @@ use crate::{
     world::{DebugState, TILE_SIZE},
 };
 
-use super::{MapData, ZLevel};
+use super::{MapData, ZLevel, EMPTY_CELL_VALUE};
 
 const DEBUG_GRID_SIZE: usize = 50;
 
@@ -44,10 +44,14 @@ fn spawn_grid_debug_visuals(
 
     for i in 0..DEBUG_GRID_SIZE {
         for j in 0..DEBUG_GRID_SIZE {
-            let x = player_x.max(DEBUG_GRID_SIZE) + i - DEBUG_GRID_SIZE / 2;
-            let y = player_y.max(DEBUG_GRID_SIZE) + j - DEBUG_GRID_SIZE / 2;
+            let x = i + player_x.max(DEBUG_GRID_SIZE / 2) - DEBUG_GRID_SIZE / 2;
+            let y = j + player_y.max(DEBUG_GRID_SIZE / 2) - DEBUG_GRID_SIZE / 2;
 
-            if map_data.grid_index(x, y) == u16::MAX {
+            if !map_data.indices_in_grid(x, y) {
+                continue;
+            }
+
+            if map_data.grid_index(x, y) == EMPTY_CELL_VALUE {
                 continue;
             }
 
@@ -101,4 +105,9 @@ impl Plugin for MapDebugPlugin {
                 .run_if(resource_exists::<MapData>),
         );
     }
+}
+
+#[test]
+fn validate_debug_grid_size_is_halvable() {
+    assert!(DEBUG_GRID_SIZE % 2 == 0)
 }

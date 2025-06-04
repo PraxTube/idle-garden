@@ -5,8 +5,6 @@ pub const PLAYER_GROUP: u32 = 1 << 1;
 pub const GRASS_GROUP: u32 = 1 << 2;
 pub const SLASH_GROUP: u32 = 1 << 3;
 
-/// Collision groups for colliders that are obstacles but don't block line of sight,
-/// smaller objects essentially. (e.g. trashcans).
 pub const WORLD_COLLISION_GROUPS: CollisionGroups =
     CollisionGroups::new(WORLD_GROUP, WORLD_GROUP | PLAYER_GROUP);
 pub const PLAYER_COLLISION_GROUPS: CollisionGroups =

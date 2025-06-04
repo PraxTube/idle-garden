@@ -1,3 +1,4 @@
+mod border;
 mod building;
 mod debug;
 mod flora;
@@ -24,7 +25,7 @@ use super::{
     DynamicCollider, TILE_SIZE,
 };
 
-const MAP_SIZE: usize = 500;
+const MAP_SIZE: usize = 50;
 const EMPTY_CELL_VALUE: u16 = u16::MAX;
 const PLAYER_BLOCKED_CELL_VALUE: u16 = u16::MAX - 1;
 
@@ -36,6 +37,7 @@ impl Plugin for MapPlugin {
             flora::MapFloraPlugin,
             debug::MapDebugPlugin,
             building::MapBuildingPlugin,
+            border::MapBorderPlugin,
         ))
         .add_event::<ItemBought>()
         .add_systems(OnExit(GameState::AssetLoading), spawn_grass)
@@ -206,6 +208,10 @@ impl MapData {
         self.grid[x.min(MAP_SIZE - 1)][y.min(MAP_SIZE - 1)]
     }
 
+    pub fn indices_in_grid(&self, x: usize, y: usize) -> bool {
+        x < MAP_SIZE && y < MAP_SIZE
+    }
+
     pub fn flora_data(&self, index: usize) -> FloraData {
         debug_assert!(index < self.flora_data.len());
 
@@ -247,13 +253,6 @@ impl MapData {
         let (x, y) = self.pos_to_grid_indices(bottom_left_corner_pos);
         let (x_size, y_size) = object_size;
 
-        if x == 0 && y == 0 {
-            warn!("object at bottom left corner of map (0, 0), can happen, if happens too frequently you have to change something.");
-            return;
-        }
-
-        debug_assert!(x_size > 0);
-        debug_assert!(y_size > 0);
         debug_assert!(self.fits_at_grid_position(x, y, x_size, y_size));
 
         for inner_x in 0..x_size {
