@@ -25,7 +25,7 @@ use super::{
     DynamicCollider, TILE_SIZE,
 };
 
-const MAP_SIZE: usize = 50;
+pub const MAP_SIZE: usize = 50;
 const EMPTY_CELL_VALUE: u16 = u16::MAX;
 const PLAYER_BLOCKED_CELL_VALUE: u16 = u16::MAX - 1;
 

@@ -1,10 +1,11 @@
-use bevy::prelude::*;
 use bevy::render::camera::ScalingMode;
 use bevy::render::view::RenderLayers;
+use bevy::{math::bounding::Aabb2d, prelude::*};
 
 use crate::player::{GamingInput, Player};
 
-use super::DebugState;
+use super::map::MAP_SIZE;
+use super::{DebugState, TILE_SIZE};
 
 /// The amount of pixels that the game camera will span in the height.
 const GAME_CAMERA_PROJECTION_SCALE: f32 = 250.0;
@@ -29,10 +30,11 @@ impl Plugin for CameraPlugin {
     }
 }
 
-/// Marker `Component` for the main camera.
 /// There should only be one entity with this `Component`.
 #[derive(Component)]
-pub struct MainCamera;
+pub struct MainCamera {
+    bounds: Aabb2d,
+}
 
 /// Overwrites the z value of the Entities `Transform` Component
 /// based on its y value.
@@ -56,6 +58,17 @@ pub enum CameraSystemSet {
     /// Set that will update the z value based on the `YSort` component.
     /// You should not run anything in this set.
     ApplyYSort,
+}
+
+impl Default for MainCamera {
+    fn default() -> Self {
+        Self {
+            bounds: Aabb2d {
+                min: Vec2::NEG_ONE * MAP_SIZE as f32 * TILE_SIZE * 0.5 - 2.0 * TILE_SIZE,
+                max: Vec2::ONE * MAP_SIZE as f32 * TILE_SIZE * 0.5 + TILE_SIZE,
+            },
+        }
+    }
 }
 
 impl CameraSystemSet {
@@ -105,7 +118,7 @@ fn spawn_camera(mut commands: Commands) {
 
     commands.spawn((
         projection,
-        MainCamera,
+        MainCamera::default(),
         Camera2d,
         RenderLayers::layer(0),
         IsDefaultUiCamera,
@@ -139,15 +152,33 @@ fn zoom_camera(
 }
 
 fn update_camera_transform(
-    mut q_camera: Query<&mut Transform, With<MainCamera>>,
+    mut q_camera: Query<(&mut Transform, &Projection, &MainCamera)>,
     q_player: Query<&Transform, (With<Player>, Without<MainCamera>)>,
 ) {
-    let Ok(mut camera_transform) = q_camera.single_mut() else {
+    let Ok((mut camera_transform, projection, main_camera)) = q_camera.single_mut() else {
         return;
     };
     let Ok(player_transform) = q_player.single() else {
         return;
     };
 
-    camera_transform.translation = player_transform.translation.with_z(0.0);
+    let player_pos = player_transform.translation.xy();
+
+    let Projection::Orthographic(orthographic) = projection else {
+        return;
+    };
+
+    let area = orthographic.area.size();
+    let pos = if area.x >= main_camera.bounds.max.x - main_camera.bounds.min.x
+        || area.y >= main_camera.bounds.max.y - main_camera.bounds.min.y
+    {
+        player_pos
+    } else {
+        player_pos.clamp(
+            main_camera.bounds.min + area * 0.5,
+            main_camera.bounds.max - area * 0.5,
+        )
+    };
+
+    camera_transform.translation = pos.extend(0.0);
 }
