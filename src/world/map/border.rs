@@ -3,12 +3,12 @@ use bevy::{color::palettes::css::PINK, prelude::*};
 use crate::{
     world::{
         collisions::{ColliderColor, StaticCollider, WORLD_COLLISION_GROUPS},
-        TILE_SIZE,
+        YSort, TILE_SIZE,
     },
-    GameState,
+    GameAssets, GameState,
 };
 
-use super::MAP_SIZE;
+use super::{MapData, MAP_SIZE};
 
 fn spawn_map_border(mut commands: Commands) {
     let size = MAP_SIZE as f32 * TILE_SIZE;
@@ -47,10 +47,46 @@ fn spawn_map_border(mut commands: Commands) {
     }
 }
 
+fn spawn_trees(mut commands: Commands, assets: Res<GameAssets>, map_data: Res<MapData>) {
+    let min = map_data.grid_indices_to_pos(0, 0) - Vec2::ONE * TILE_SIZE;
+    let max = map_data.grid_indices_to_pos(MAP_SIZE - 1, MAP_SIZE - 1) + Vec2::ONE * TILE_SIZE;
+
+    let mut positions = Vec::new();
+    for x in 0..MAP_SIZE + 2 {
+        for y in [min.y, max.y] {
+            let x = min.x + x as f32 * TILE_SIZE;
+            debug_assert!(x <= max.x);
+            positions.push(Vec2::new(x, y));
+        }
+    }
+
+    for x in [min.x, max.x] {
+        for y in 0..MAP_SIZE + 2 {
+            let y = min.y + y as f32 * TILE_SIZE;
+            debug_assert!(y <= max.y);
+            positions.push(Vec2::new(x, y));
+        }
+    }
+
+    for pos in positions {
+        commands.spawn((
+            Sprite::from_image(assets.pine_tree.clone()),
+            Transform::from_translation(pos.extend(0.0)),
+            YSort(0.0),
+        ));
+    }
+}
+
 pub struct MapBorderPlugin;
 
 impl Plugin for MapBorderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnExit(GameState::AssetLoading), spawn_map_border);
+        app.add_systems(OnExit(GameState::AssetLoading), spawn_map_border)
+            .add_systems(
+                Update,
+                spawn_trees.run_if(
+                    resource_exists::<GameAssets>.and(resource_exists::<MapData>.and(run_once)),
+                ),
+            );
     }
 }

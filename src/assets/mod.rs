@@ -47,6 +47,9 @@ pub struct GameAssets {
     #[asset(path = "map/tree.png")]
     pub tree: Handle<Image>,
 
+    #[asset(path = "map/pine-tree.png")]
+    pub pine_tree: Handle<Image>,
+
     // --- FONTS ---
     #[asset(path = "fonts/PressStart2P.ttf")]
     pub pixel_font: Handle<Font>,
