@@ -7,7 +7,7 @@ use crate::{
     player::GamingInput, ui::ItemPressed, world::TILE_SIZE, BachelorBuild, GameAssets, GameState,
 };
 
-use super::{Flora, ItemBought, MapData, ProgressionSystemSet, ZLevel};
+use super::{Flora, ItemBought, MapData, ProgressionCore, ProgressionSystemSet, ZLevel};
 
 const USER_GRID_OFFSET: Vec2 = Vec2::new(0.5 * TILE_SIZE, 0.5 * TILE_SIZE);
 
@@ -25,6 +25,7 @@ struct BuildingGrid;
 fn spawn_blueprint_item(
     mut commands: Commands,
     assets: Res<GameAssets>,
+    core: Res<ProgressionCore>,
     map_data: Res<MapData>,
     bachelor_build: Res<BachelorBuild>,
     mut ev_item_pressed: EventReader<ItemPressed>,
@@ -34,6 +35,10 @@ fn spawn_blueprint_item(
     }
 
     for ev in ev_item_pressed.read() {
+        if !core.is_affordable(&map_data, &ev.flora) {
+            continue;
+        }
+
         let root = commands
             .spawn((
                 Blueprint {
@@ -121,6 +126,36 @@ fn despawn_blueprint(mut commands: Commands, q_blueprint: Query<Entity, With<Blu
     }
 }
 
+fn despawn_blueprint_on_player_input(
+    mut commands: Commands,
+    gaming_input: Res<GamingInput>,
+    q_blueprint: Query<Entity, With<Blueprint>>,
+) {
+    if !gaming_input.cancel {
+        return;
+    }
+
+    for entity in &q_blueprint {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn despawn_blueprint_on_item_bought(
+    mut commands: Commands,
+    core: Res<ProgressionCore>,
+    map_data: Res<MapData>,
+    q_blueprint: Query<Entity, With<Blueprint>>,
+    mut ev_item_bought: EventReader<ItemBought>,
+) {
+    for ev in ev_item_bought.read() {
+        if !core.is_affordable(&map_data, &ev.item) {
+            for entity in &q_blueprint {
+                commands.entity(entity).despawn();
+            }
+        }
+    }
+}
+
 fn update_blueprint_color(
     q_blueprint: Query<(&Children, &Blueprint)>,
     mut q_sprites: Query<&mut Sprite>,
@@ -153,12 +188,14 @@ impl Plugin for MapBuildingPlugin {
                 Update,
                 (
                     despawn_blueprint.run_if(on_event::<ItemPressed>),
+                    despawn_blueprint_on_player_input,
                     spawn_blueprint_item.run_if(
                         resource_exists::<GameAssets>.and(resource_exists::<BachelorBuild>),
                     ),
                     move_blueprint.run_if(resource_exists::<MapData>),
                     display_building_grid,
-                    despawn_blueprint.run_if(on_event::<ItemBought>),
+                    despawn_blueprint_on_item_bought
+                        .run_if(resource_exists::<ProgressionCore>.and(resource_exists::<MapData>)),
                     update_blueprint_color,
                 )
                     .chain()

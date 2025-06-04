@@ -63,6 +63,7 @@ pub struct GamingInput {
     pub move_direction: Vec2,
     pub aim_direction: Vec2,
     pub confirm: bool,
+    pub cancel: bool,
     pub slash: bool,
 
     pub pause: bool,
@@ -89,6 +90,7 @@ impl BitOrAssign for GamingInput {
         self.toggle_debug_grid |= rhs.toggle_debug_grid;
 
         self.confirm |= rhs.confirm;
+        self.cancel |= rhs.cancel;
         self.slash |= rhs.slash;
         self.pause |= rhs.pause;
     }

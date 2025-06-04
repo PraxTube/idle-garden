@@ -55,6 +55,8 @@ fn handle_keyboard_inputs(
 
     input.confirm =
         keys.just_pressed(KeyCode::KeyL) || mouse_buttons.just_pressed(MouseButton::Left);
+    input.cancel =
+        keys.just_pressed(KeyCode::Escape) || mouse_buttons.just_pressed(MouseButton::Right);
     input.slash = mouse_buttons.just_pressed(MouseButton::Left);
 
     let mut move_direction = Vec2::ZERO;
