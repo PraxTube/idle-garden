@@ -5,15 +5,13 @@ use strum::FromRepr;
 use crate::{
     world::{
         camera::YSort,
-        collisions::{IntersectionEvent, StaticCollider, WORLD_COLLISION_GROUPS},
+        collisions::{StaticCollider, WORLD_COLLISION_GROUPS},
         TILE_SIZE,
     },
     BachelorBuild, GameAssets,
 };
 
-use super::{
-    ItemBought, MapData, ProgressionCore, EMPTY_CELL_VALUE, MAP_SIZE, PLAYER_BLOCKED_CELL_VALUE,
-};
+use super::{ItemBought, MapData, EMPTY_CELL_VALUE, MAP_SIZE, PLAYER_BLOCKED_CELL_VALUE};
 
 #[derive(Deserialize, Clone, Default)]
 pub struct FloraData {
@@ -147,13 +145,7 @@ fn spawn_flora_on_item_bought(
         let pos = ev.pos;
 
         map_data.set_map_data_value_at_pos(pos, flora_data.size_on_grid(), ev.item.index() as u16);
-        spawn_flora(
-            &mut commands,
-            &assets,
-            pos + flora_data.size_offset(),
-            &ev.item,
-            &flora_data,
-        );
+        spawn_flora(&mut commands, &assets, pos, &ev.item, &flora_data);
     }
 }
 
@@ -180,17 +172,6 @@ fn spawn_flora_on_map_data_insertion(
     }
 }
 
-fn cut_tall_grass(
-    mut commands: Commands,
-    mut core: ResMut<ProgressionCore>,
-    mut ev_intersection: EventReader<IntersectionEvent>,
-) {
-    for ev in ev_intersection.read() {
-        core.points += 1;
-        commands.entity(ev.aabb).despawn();
-    }
-}
-
 pub struct MapFloraPlugin;
 
 impl Plugin for MapFloraPlugin {
@@ -207,7 +188,6 @@ impl Plugin for MapFloraPlugin {
                         .and(resource_exists::<MapData>)
                         .and(run_once),
                 ),
-                cut_tall_grass.run_if(resource_exists::<ProgressionCore>),
             ),
         );
     }

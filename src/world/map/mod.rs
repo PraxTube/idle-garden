@@ -2,6 +2,7 @@ mod border;
 mod building;
 mod debug;
 mod flora;
+mod grass;
 
 use std::{collections::HashMap, time::Duration};
 
@@ -10,24 +11,23 @@ pub use flora::Flora;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use flora::FloraData;
-use rand::{thread_rng, Rng};
+use grass::CutTallGrass;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     assets::FLORA_DATA_CORE,
     player::{GamingInput, Player},
     ui::ItemPressed,
-    BachelorBuild, GameAssets, GameState,
+    BachelorBuild, GameState,
 };
 
-use super::{
-    collisions::{intersection_aabb_circle, StaticSensorAABB, GRASS_COLLISION_GROUPS},
-    DynamicCollider, TILE_SIZE,
-};
+use super::{collisions::intersection_aabb_circle, DynamicCollider, TILE_SIZE};
 
 pub const MAP_SIZE: usize = 50;
 const EMPTY_CELL_VALUE: u16 = u16::MAX;
 const PLAYER_BLOCKED_CELL_VALUE: u16 = u16::MAX - 1;
+
+const CUT_TALL_GRASS_POINTS: u64 = 1;
 
 pub struct MapPlugin;
 
@@ -38,9 +38,9 @@ impl Plugin for MapPlugin {
             debug::MapDebugPlugin,
             building::MapBuildingPlugin,
             border::MapBorderPlugin,
+            grass::MapGrassPlugin,
         ))
         .add_event::<ItemBought>()
-        .add_systems(OnExit(GameState::AssetLoading), spawn_grass)
         .add_systems(
             OnExit(GameState::AssetLoading),
             (insert_progression_core, insert_map_data_resource),
@@ -48,6 +48,7 @@ impl Plugin for MapPlugin {
         .add_systems(
             Update,
             (
+                increase_points_on_cut_tall_grass,
                 block_grid_player_pos,
                 trigger_item_bought_on_item_pressed.run_if(resource_exists::<BachelorBuild>),
                 trigger_item_bought_on_blueprint_build.run_if(resource_exists::<BachelorBuild>),
@@ -276,27 +277,6 @@ impl ZLevel {
     }
 }
 
-fn spawn_grass(mut commands: Commands, assets: Res<GameAssets>) {
-    let mut rng = thread_rng();
-
-    let size = 25;
-    for i in -size..size {
-        for j in -size..size {
-            if rng.gen_range(0..100) < 95 {
-                continue;
-            }
-
-            let pos = Vec2::new(i as f32 * TILE_SIZE, j as f32 * TILE_SIZE);
-            commands.spawn((
-                Transform::from_translation(pos.extend(ZLevel::Floor.value())),
-                Sprite::from_image(assets.grass.clone()),
-                StaticSensorAABB::new(8.0, 8.0),
-                GRASS_COLLISION_GROUPS,
-            ));
-        }
-    }
-}
-
 #[cfg(target_arch = "wasm32")]
 fn insert_map_data_resource_wasm(commands: &mut Commands) {
     use crate::assets::WASM_MAP_DATA_KEY_STORAGE;
@@ -518,6 +498,15 @@ fn block_grid_player_pos(
         }
     }
     map_data.previous_player_blocked_cells = blocked_cells;
+}
+
+fn increase_points_on_cut_tall_grass(
+    mut core: ResMut<ProgressionCore>,
+    mut ev_cut_tall_grass: EventReader<CutTallGrass>,
+) {
+    for _ in ev_cut_tall_grass.read() {
+        core.points += CUT_TALL_GRASS_POINTS;
+    }
 }
 
 #[test]

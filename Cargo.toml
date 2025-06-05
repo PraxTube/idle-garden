@@ -34,6 +34,5 @@ bevy = "0.16.0"
 bevy_asset_loader = { version = "0.23.0", features = ["2d"] }
 # bevy_kira_audio = "0.23.0"
 
-# bevy_tweening = { version = "0.13.0", features = ["bevy_ui"]}
 # bevy_trickfilm = "0.10.0"
 # bevy_trickfilm_derive = "0.9.0"

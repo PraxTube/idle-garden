@@ -21,6 +21,7 @@ pub struct GameAssets {
             "ui/icons/raddish_icon.png",
             "ui/icons/carrot_icon.png",
             "ui/icons/sunflower_icon.png",
+            "map/tree.png"
         ),
         collection(typed)
     )]
@@ -38,14 +39,12 @@ pub struct GameAssets {
             "map/potatoe.png",
             "map/raddish.png",
             "map/carrot.png",
-            "map/sunflower.png"
+            "map/sunflower.png",
+            "map/tree.png"
         ),
         collection(typed)
     )]
     pub flora_images: Vec<Handle<Image>>,
-
-    #[asset(path = "map/tree.png")]
-    pub tree: Handle<Image>,
 
     #[asset(path = "map/pine-tree.png")]
     pub pine_tree: Handle<Image>,
