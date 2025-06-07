@@ -1,11 +1,13 @@
 use bevy::{
     color::palettes::css::{PURPLE, WHITE},
     prelude::*,
+    text::FontSmoothing,
 };
 
 use crate::{
     player::{GamingInput, Player},
     world::{DebugState, TILE_SIZE},
+    GameAssets,
 };
 
 use super::{MapData, ZLevel, EMPTY_CELL_VALUE};
@@ -28,6 +30,7 @@ fn toggle_grid_debug(mut debug_state: ResMut<DebugState>, gaming_input: Res<Gami
 
 fn spawn_grid_debug_visuals(
     mut commands: Commands,
+    assets: Res<GameAssets>,
     debug_state: Res<DebugState>,
     map_data: Res<MapData>,
     q_player: Query<&Transform, With<Player>>,
@@ -57,11 +60,18 @@ fn spawn_grid_debug_visuals(
 
             let pos = map_data.grid_indices_to_pos(x, y);
 
+            let mut text = format!("{:X}", map_data.grid_index(x, y));
+            if text.chars().count() > 2 {
+                text.insert(2, '\n');
+            }
+
             commands.spawn((
                 GridDebugVisual,
-                Text2d::new(format!("{}", map_data.grid_index(x, y))),
+                Text2d::new(text),
                 TextFont {
-                    font_size: 10.0,
+                    font: assets.pixel_font.clone(),
+                    font_size: 6.0,
+                    font_smoothing: FontSmoothing::None,
                     ..default()
                 },
                 TextColor(WHITE.into()),
@@ -99,7 +109,7 @@ impl Plugin for MapDebugPlugin {
             (
                 toggle_grid_debug,
                 despawn_grid_debug_visuals,
-                spawn_grid_debug_visuals,
+                spawn_grid_debug_visuals.run_if(resource_exists::<GameAssets>),
             )
                 .chain()
                 .run_if(resource_exists::<MapData>),

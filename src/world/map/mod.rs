@@ -26,6 +26,7 @@ use super::{collisions::intersection_aabb_circle, DynamicCollider, TILE_SIZE};
 pub const MAP_SIZE: usize = 50;
 const EMPTY_CELL_VALUE: u16 = u16::MAX;
 const PLAYER_BLOCKED_CELL_VALUE: u16 = u16::MAX - 1;
+const TALL_GRASS_CELL_VALUE: u16 = u16::MAX - 2;
 
 const CUT_TALL_GRASS_POINTS: u64 = 1;
 
@@ -49,6 +50,7 @@ impl Plugin for MapPlugin {
             Update,
             (
                 increase_points_on_cut_tall_grass,
+                update_map_data_on_tall_grass_cut,
                 block_grid_player_pos,
                 trigger_item_bought_on_item_pressed.run_if(resource_exists::<BachelorBuild>),
                 trigger_item_bought_on_blueprint_build.run_if(resource_exists::<BachelorBuild>),
@@ -261,6 +263,12 @@ impl MapData {
                 self.grid[x + inner_x][y + inner_y] = value;
             }
         }
+    }
+
+    /// Sets the value at the position to empty.
+    fn reset_map_data_at_pos(&mut self, pos: Vec2) {
+        let (x, y) = self.pos_to_grid_indices(pos);
+        self.grid[x][y] = EMPTY_CELL_VALUE;
     }
 }
 
@@ -498,6 +506,15 @@ fn block_grid_player_pos(
         }
     }
     map_data.previous_player_blocked_cells = blocked_cells;
+}
+
+fn update_map_data_on_tall_grass_cut(
+    mut map_data: ResMut<MapData>,
+    mut ev_cut_tall_grass: EventReader<CutTallGrass>,
+) {
+    for ev in ev_cut_tall_grass.read() {
+        map_data.reset_map_data_at_pos(ev.pos);
+    }
 }
 
 fn increase_points_on_cut_tall_grass(

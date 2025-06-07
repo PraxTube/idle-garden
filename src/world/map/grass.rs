@@ -5,9 +5,13 @@ use crate::world::{
     ZLevel, TILE_SIZE,
 };
 
-use crate::{GameAssets, GameState};
+use crate::GameAssets;
 
-use super::{ProgressionSystemSet, CUT_TALL_GRASS_POINTS, MAP_SIZE};
+use super::{
+    MapData, ProgressionSystemSet, CUT_TALL_GRASS_POINTS, MAP_SIZE, TALL_GRASS_CELL_VALUE,
+};
+
+const GRASS_GRID_SIZE: (usize, usize) = (1, 1);
 
 #[derive(Component)]
 struct TallGrass;
@@ -20,7 +24,7 @@ struct NumberPopUp {
 #[derive(Event)]
 pub struct CutTallGrass {
     entity: Entity,
-    pos: Vec2,
+    pub pos: Vec2,
 }
 
 impl Default for NumberPopUp {
@@ -42,7 +46,7 @@ fn spawn_tall_grass(commands: &mut Commands, assets: &GameAssets, pos: Vec2) {
     ));
 }
 
-fn spawn_grass(mut commands: Commands, assets: Res<GameAssets>) {
+fn spawn_grass(mut commands: Commands, assets: Res<GameAssets>, mut map_data: ResMut<MapData>) {
     let size = (MAP_SIZE / 2) as i32;
     for i in -size..size {
         for j in -size..size {
@@ -51,6 +55,7 @@ fn spawn_grass(mut commands: Commands, assets: Res<GameAssets>) {
             }
 
             let pos = Vec2::new(i as f32 * TILE_SIZE, j as f32 * TILE_SIZE);
+            map_data.set_map_data_value_at_pos(pos, GRASS_GRID_SIZE, TALL_GRASS_CELL_VALUE);
             spawn_tall_grass(&mut commands, &assets, pos);
         }
     }
@@ -129,7 +134,12 @@ pub struct MapGrassPlugin;
 impl Plugin for MapGrassPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CutTallGrass>()
-            .add_systems(OnExit(GameState::AssetLoading), spawn_grass)
+            .add_systems(
+                Update,
+                spawn_grass.run_if(
+                    resource_exists::<GameAssets>.and(resource_exists::<MapData>.and(run_once)),
+                ),
+            )
             .add_systems(
                 Update,
                 (
