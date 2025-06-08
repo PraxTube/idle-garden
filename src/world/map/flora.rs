@@ -1,8 +1,14 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    render::render_resource::{AsBindGroup, ShaderRef},
+    sprite::{AlphaMode2d, Material2d, Material2dPlugin},
+};
+
 use serde::Deserialize;
 use strum::FromRepr;
 
 use crate::{
+    assets::FLORA_SHADER,
     world::{
         camera::YSort,
         collisions::{StaticCollider, WORLD_COLLISION_GROUPS},
@@ -31,6 +37,19 @@ pub enum Flora {
     Carrot,
     Sunflower,
     Tree,
+    SwampTree,
+}
+
+#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+pub struct FloraMaterial {
+    #[texture(0)]
+    #[sampler(1)]
+    pub texture: Option<Handle<Image>>,
+    #[texture(2)]
+    #[sampler(3)]
+    pub noise_texture: Option<Handle<Image>>,
+    #[uniform(4)]
+    pub texel_size: Vec2,
 }
 
 impl Flora {
@@ -45,7 +64,7 @@ impl Flora {
     }
 
     fn last() -> Self {
-        Flora::Tree
+        Flora::SwampTree
     }
 
     pub fn len() -> usize {
@@ -100,14 +119,26 @@ impl FloraData {
     }
 }
 
+impl Material2d for FloraMaterial {
+    fn fragment_shader() -> ShaderRef {
+        FLORA_SHADER.into()
+    }
+
+    fn alpha_mode(&self) -> AlphaMode2d {
+        AlphaMode2d::Blend
+    }
+}
+
 fn spawn_flora(
     commands: &mut Commands,
     assets: &GameAssets,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<FloraMaterial>,
+    images: &Assets<Image>,
     pos: Vec2,
     flora: &Flora,
     data: &FloraData,
 ) {
-    let image = flora.image(assets);
     let collider = data.collider();
     let ysort = data.ysort();
     let gfx_offset = data.gfx_offset();
@@ -122,16 +153,38 @@ fn spawn_flora(
         ))
         .id();
 
+    let image_handle = flora.image(assets);
+    let Some(image) = images.get(&image_handle) else {
+        error!("failed to get image from image handle when spawning flora, must never happen!");
+        return;
+    };
+
     commands.spawn((
         ChildOf(root),
-        Transform::from_translation(gfx_offset.extend(0.0)),
-        Sprite::from_image(image),
+        Transform::from_translation(gfx_offset.extend(0.0)).with_scale(Vec3::new(
+            image.width() as f32,
+            image.height() as f32,
+            1.0,
+        )),
+        Mesh2d(meshes.add(Rectangle::default())),
+        MeshMaterial2d(
+            materials
+                .add(FloraMaterial {
+                    texture: Some(image_handle.clone()),
+                    noise_texture: Some(assets.noise_texture.clone()),
+                    texel_size: Vec2::new(1.0 / image.width() as f32, 1.0 / image.height() as f32),
+                })
+                .clone(),
+        ),
     ));
 }
 
 fn spawn_flora_on_item_bought(
     mut commands: Commands,
     assets: Res<GameAssets>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<FloraMaterial>>,
+    images: Res<Assets<Image>>,
     mut map_data: ResMut<MapData>,
     bachelor_build: Res<BachelorBuild>,
     mut ev_item_bought: EventReader<ItemBought>,
@@ -145,13 +198,25 @@ fn spawn_flora_on_item_bought(
         let pos = ev.pos;
 
         map_data.set_map_data_value_at_pos(pos, flora_data.size_on_grid(), ev.item.index() as u16);
-        spawn_flora(&mut commands, &assets, pos, &ev.item, &flora_data);
+        spawn_flora(
+            &mut commands,
+            &assets,
+            &mut meshes,
+            &mut materials,
+            &images,
+            pos,
+            &ev.item,
+            &flora_data,
+        );
     }
 }
 
 fn spawn_flora_on_map_data_insertion(
     mut commands: Commands,
     assets: Res<GameAssets>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<FloraMaterial>>,
+    images: Res<Assets<Image>>,
     map_data: Res<MapData>,
 ) {
     for x in 0..MAP_SIZE {
@@ -167,7 +232,16 @@ fn spawn_flora_on_map_data_insertion(
             let flora = Flora::from_index(map_data.grid_index(x, y).into());
             let flora_data = map_data.flora_data(flora.index());
 
-            spawn_flora(&mut commands, &assets, pos, &flora, &flora_data);
+            spawn_flora(
+                &mut commands,
+                &assets,
+                &mut meshes,
+                &mut materials,
+                &images,
+                pos,
+                &flora,
+                &flora_data,
+            );
         }
     }
 }
@@ -176,19 +250,20 @@ pub struct MapFloraPlugin;
 
 impl Plugin for MapFloraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                spawn_flora_on_item_bought.run_if(
-                    resource_exists::<GameAssets>
-                        .and(resource_exists::<MapData>.and(resource_exists::<BachelorBuild>)),
+        app.add_plugins(Material2dPlugin::<FloraMaterial>::default())
+            .add_systems(
+                Update,
+                (
+                    spawn_flora_on_item_bought.run_if(
+                        resource_exists::<GameAssets>
+                            .and(resource_exists::<MapData>.and(resource_exists::<BachelorBuild>)),
+                    ),
+                    spawn_flora_on_map_data_insertion.run_if(
+                        resource_exists::<GameAssets>
+                            .and(resource_exists::<MapData>)
+                            .and(run_once),
+                    ),
                 ),
-                spawn_flora_on_map_data_insertion.run_if(
-                    resource_exists::<GameAssets>
-                        .and(resource_exists::<MapData>)
-                        .and(run_once),
-                ),
-            ),
-        );
+            );
     }
 }

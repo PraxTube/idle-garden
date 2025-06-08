@@ -23,6 +23,14 @@
     "collider_size": [5, 5],
     "size_on_grid": [1, 1]
   },
+  "SwampTree": {
+    "cost": 1,
+    "pps": 1,
+    "ysort": 0,
+    "gfx_offset": [0, 35],
+    "collider_size": [5, 5],
+    "size_on_grid": [1, 1]
+  },
   "Sunflower": {
     "cost": 50,
     "pps": 1,
@@ -32,7 +40,7 @@
     "size_on_grid": [1, 1]
   },
   "Tree": {
-    "cost": 300,
+    "cost": 1,
     "pps": 5,
     "ysort": 0,
     "gfx_offset": [0, 40],

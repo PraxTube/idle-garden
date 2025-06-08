@@ -119,6 +119,8 @@ impl MapData {
         let map: HashMap<Flora, FloraData> = serde_json::from_str(FLORA_DATA_CORE)
             .expect("failed to parse flora data core to json str");
 
+        debug_assert_eq!(map.len(), Flora::len());
+
         let mut data = vec![FloraData::default(); Flora::len()];
 
         for key in map.keys() {
@@ -585,4 +587,12 @@ fn validate_grid_index() {
     map_data.grid_index(MAP_SIZE + 100, 0);
     map_data.grid_index(MAP_SIZE + 100, MAP_SIZE);
     map_data.grid_index(MAP_SIZE + 100, MAP_SIZE + 100);
+}
+
+#[test]
+fn validate_flora_len_matches_json_data() {
+    let map: HashMap<Flora, FloraData> =
+        serde_json::from_str(FLORA_DATA_CORE).expect("failed to parse flora data core to json str");
+
+    assert_eq!(Flora::len(), map.len());
 }
