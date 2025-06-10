@@ -7,6 +7,7 @@ pub const WASM_MAP_DATA_KEY_STORAGE: &str = "map-grid";
 #[cfg(target_arch = "wasm32")]
 pub const WASM_PROGRESSION_CORE_KEY_STORAGE: &str = "progression-core";
 pub const FLORA_SHADER: &str = "shaders/flora_shader.wgsl";
+pub const GRASS_SHADER: &str = "shaders/grass_shader.wgsl";
 
 #[derive(AssetCollection, Resource)]
 pub struct GameAssets {

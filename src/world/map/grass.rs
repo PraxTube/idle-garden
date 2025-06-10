@@ -1,8 +1,16 @@
-use bevy::{prelude::*, text::FontSmoothing};
+use bevy::{
+    prelude::*,
+    render::render_resource::{AsBindGroup, ShaderRef},
+    sprite::{AlphaMode2d, Material2d, Material2dPlugin},
+    text::FontSmoothing,
+};
 
-use crate::world::{
-    collisions::{IntersectionEvent, StaticSensorAABB, GRASS_COLLISION_GROUPS},
-    ZLevel, TILE_SIZE,
+use crate::{
+    assets::GRASS_SHADER,
+    world::{
+        collisions::{IntersectionEvent, StaticSensorAABB, GRASS_COLLISION_GROUPS},
+        ZLevel, TILE_SIZE,
+    },
 };
 
 use crate::GameAssets;
@@ -27,6 +35,18 @@ pub struct CutTallGrass {
     pub pos: Vec2,
 }
 
+#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+pub struct GrassMaterial {
+    #[texture(0)]
+    #[sampler(1)]
+    pub texture: Option<Handle<Image>>,
+    #[texture(2)]
+    #[sampler(3)]
+    pub noise: Option<Handle<Image>>,
+    #[uniform(4)]
+    pub texel_size: Vec2,
+}
+
 impl Default for NumberPopUp {
     fn default() -> Self {
         Self {
@@ -36,17 +56,59 @@ impl Default for NumberPopUp {
     }
 }
 
-fn spawn_tall_grass(commands: &mut Commands, assets: &GameAssets, pos: Vec2) {
+impl Material2d for GrassMaterial {
+    fn fragment_shader() -> ShaderRef {
+        GRASS_SHADER.into()
+    }
+
+    fn alpha_mode(&self) -> AlphaMode2d {
+        AlphaMode2d::Blend
+    }
+}
+
+fn spawn_tall_grass(
+    commands: &mut Commands,
+    assets: &GameAssets,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<GrassMaterial>,
+    images: &Assets<Image>,
+    pos: Vec2,
+) {
+    let image_handle = assets.grass.clone();
+    let Some(image) = images.get(&image_handle) else {
+        error!("failed to get grass image from handle, must never happen!");
+        return;
+    };
+
+    let image_size = Vec2::new(image.width() as f32, image.height() as f32);
+
     commands.spawn((
         TallGrass,
-        Transform::from_translation(pos.extend(ZLevel::Floor.value())),
-        Sprite::from_image(assets.grass.clone()),
+        Transform::from_translation(pos.extend(ZLevel::Floor.value()))
+            .with_scale(image_size.extend(1.0)),
+        Mesh2d(meshes.add(Rectangle::default())),
+        MeshMaterial2d(
+            materials
+                .add(GrassMaterial {
+                    texture: Some(image_handle.clone()),
+                    noise: Some(assets.noise_texture.clone()),
+                    texel_size: 1.0 / image_size,
+                })
+                .clone(),
+        ),
         StaticSensorAABB::new(8.0, 8.0),
         GRASS_COLLISION_GROUPS,
     ));
 }
 
-fn spawn_grass(mut commands: Commands, assets: Res<GameAssets>, mut map_data: ResMut<MapData>) {
+fn spawn_grass(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<GrassMaterial>>,
+    images: Res<Assets<Image>>,
+    mut map_data: ResMut<MapData>,
+) {
     let size = (MAP_SIZE / 2) as i32;
     for i in -size..size {
         for j in -size..size {
@@ -56,7 +118,14 @@ fn spawn_grass(mut commands: Commands, assets: Res<GameAssets>, mut map_data: Re
 
             let pos = Vec2::new(i as f32 * TILE_SIZE, j as f32 * TILE_SIZE);
             map_data.set_map_data_value_at_pos(pos, GRASS_GRID_SIZE, TALL_GRASS_CELL_VALUE);
-            spawn_tall_grass(&mut commands, &assets, pos);
+            spawn_tall_grass(
+                &mut commands,
+                &assets,
+                &mut meshes,
+                &mut materials,
+                &images,
+                pos,
+            );
         }
     }
 }
@@ -133,7 +202,8 @@ pub struct MapGrassPlugin;
 
 impl Plugin for MapGrassPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<CutTallGrass>()
+        app.add_plugins(Material2dPlugin::<GrassMaterial>::default())
+            .add_event::<CutTallGrass>()
             .add_systems(
                 Update,
                 spawn_grass.run_if(
