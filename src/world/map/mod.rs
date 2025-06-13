@@ -199,7 +199,7 @@ impl MapData {
         let x = p.x.clamp(0.0, MAP_SIZE as f32 - 1.0);
         let y = p.y.clamp(0.0, MAP_SIZE as f32 - 1.0);
 
-        (x.round() as usize, y.round() as usize)
+        self.clamp_indices(x.round() as usize, y.round() as usize)
     }
 
     fn grid_indices_to_pos(&self, x: usize, y: usize) -> Vec2 {
@@ -209,8 +209,13 @@ impl MapData {
         )
     }
 
+    fn clamp_indices(&self, x: usize, y: usize) -> (usize, usize) {
+        (x.min(MAP_SIZE - 1), y.min(MAP_SIZE - 1))
+    }
+
     pub fn grid_index(&self, x: usize, y: usize) -> u16 {
-        self.grid[x.min(MAP_SIZE - 1)][y.min(MAP_SIZE - 1)]
+        let (clamped_x, clamped_y) = self.clamp_indices(x, y);
+        self.grid[clamped_x][clamped_y]
     }
 
     pub fn indices_in_grid(&self, x: usize, y: usize) -> bool {
@@ -229,9 +234,8 @@ impl MapData {
     }
 
     fn fits_at_grid_position(&self, x: usize, y: usize, x_size: usize, y_size: usize) -> bool {
-        if self.grid_index(x, y) != EMPTY_CELL_VALUE {
-            return false;
-        }
+        debug_assert_ne!(x_size, 0);
+        debug_assert_ne!(y_size, 0);
 
         for inner_x in 0..x_size {
             for inner_y in 0..y_size {
@@ -262,7 +266,8 @@ impl MapData {
 
         for inner_x in 0..x_size {
             for inner_y in 0..y_size {
-                self.grid[x + inner_x][y + inner_y] = value;
+                let (clamped_x, clamped_y) = self.clamp_indices(x + inner_x, y + inner_y);
+                self.grid[clamped_x][clamped_y] = value;
             }
         }
     }
