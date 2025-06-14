@@ -367,7 +367,7 @@ impl Plugin for UiStorePlugin {
                 Update,
                 (
                     reset_all_highlights,
-                    handle_button_interaction,
+                    handle_button_interaction.run_if(in_state(GameState::Gaming)),
                     highlight_item,
                     trigger_button_pressed,
                     update_store_item_count_texts.run_if(resource_exists::<ProgressionCore>),

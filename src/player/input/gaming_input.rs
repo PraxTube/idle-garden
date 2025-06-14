@@ -53,8 +53,7 @@ fn handle_keyboard_inputs(
     input.toggle_debug = keys.just_pressed(KeyCode::F3);
     input.toggle_debug_grid = keys.just_pressed(KeyCode::KeyG);
 
-    input.confirm =
-        keys.just_pressed(KeyCode::KeyL) || mouse_buttons.just_pressed(MouseButton::Left);
+    input.confirm = mouse_buttons.just_pressed(MouseButton::Left);
     input.cancel =
         keys.just_pressed(KeyCode::Escape) || mouse_buttons.just_pressed(MouseButton::Right);
     input.slash = mouse_buttons.just_pressed(MouseButton::Left);
@@ -102,7 +101,7 @@ fn handle_keyboard_inputs(
     }
     input.scroll = zoom;
 
-    input.pause = keys.just_pressed(KeyCode::Escape);
+    input.menu = keys.just_pressed(KeyCode::Escape);
 
     if input != GamingInput::default() {
         *input_device = InputDevice::Keyboard;
@@ -122,7 +121,7 @@ impl Plugin for GamingInputPlugin {
                 handle_keyboard_inputs,
             )
                 .chain()
-                .run_if(in_state(GameState::Gaming))
+                .run_if(in_state(GameState::Gaming).or(in_state(GameState::Menu)))
                 .in_set(InputControllerSystem)
                 .after(InputSystem),
         );

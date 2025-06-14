@@ -5,7 +5,7 @@ use crate::{
         utils::quat_from_vec2, Blueprint, BuildingSystemSet, ProgressionSystemSet,
         StaticSensorCircle, ZLevel, SLASH_COLLISION_GROUPS,
     },
-    GameAssets,
+    GameAssets, GameState,
 };
 
 use super::{GamingInput, Player};
@@ -103,6 +103,7 @@ impl Plugin for PlayerSlashPlugin {
                 spawn_slash.run_if(resource_exists::<GameAssets>),
             )
                 .chain()
+                .run_if(in_state(GameState::Gaming))
                 .after(ProgressionSystemSet)
                 .before(BuildingSystemSet),
         );

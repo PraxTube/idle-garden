@@ -66,7 +66,7 @@ pub struct GamingInput {
     pub cancel: bool,
     pub slash: bool,
 
-    pub pause: bool,
+    pub menu: bool,
 
     pub mouse_world_coords: Vec2,
 }
@@ -92,7 +92,7 @@ impl BitOrAssign for GamingInput {
         self.confirm |= rhs.confirm;
         self.cancel |= rhs.cancel;
         self.slash |= rhs.slash;
-        self.pause |= rhs.pause;
+        self.menu |= rhs.menu;
     }
 }
 
