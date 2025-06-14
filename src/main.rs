@@ -29,6 +29,7 @@ pub enum GameState {
     AssetLoading,
     BachelorToggle,
     Gaming,
+    Menu,
 }
 
 #[derive(Resource)]

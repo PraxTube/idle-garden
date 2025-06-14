@@ -4,6 +4,7 @@ mod camera;
 mod collisions;
 mod debug;
 mod map;
+mod state;
 
 pub use camera::{MainCamera, YSort};
 pub use collisions::{
@@ -26,6 +27,7 @@ impl Plugin for WorldPlugin {
             debug::DebugPlugin,
             camera::CameraPlugin,
             collisions::WorldCollisionPlugin,
+            state::WorldStatePlugin,
             map::MapPlugin,
         ));
     }

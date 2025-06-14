@@ -1,6 +1,8 @@
+mod menu;
 mod stats;
 mod store;
 
+pub use menu::{MenuAction, MenuActionEvent};
 pub use store::ItemPressed;
 
 use bevy::{prelude::*, window::WindowResized};
@@ -11,8 +13,12 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((stats::UiStatsPlugin, store::UiStorePlugin))
-            .add_systems(Update, scale_ui);
+        app.add_plugins((
+            stats::UiStatsPlugin,
+            store::UiStorePlugin,
+            menu::UiMenuPlugin,
+        ))
+        .add_systems(Update, scale_ui);
     }
 }
 
