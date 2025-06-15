@@ -3,11 +3,10 @@
     mesh2d_vertex_output::VertexOutput,
 }
 
-@group(2) @binding(0) var texture: texture_2d<f32>;
-@group(2) @binding(1) var texture_sampler: sampler;
-@group(2) @binding(2) var noise_texture: texture_2d<f32>;
-@group(2) @binding(3) var noise_sampler: sampler;
-@group(2) @binding(4) var<uniform> texel_size: vec2<f32>;
+// vec2 is sufficient here, but we pad with 2 more f32 to have 16 byte aligned for WASM
+@group(2) @binding(0) var<uniform> texel_size: vec4<f32>;
+@group(2) @binding(1) var texture: texture_2d<f32>;
+@group(2) @binding(2) var texture_sampler: sampler;
 
 fn noise_permute_vec3f(x: vec3<f32>) -> vec3<f32> {
     return (((x * 34.0) + 10.0) * x) % 289.0;
@@ -73,20 +72,14 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let time_scale_first = 0.0001;
     let distortion = 2.5;
 
-    let snapped_mesh_uv = floor(mesh.uv / texel_size + 0.5) * texel_size;
-
-    // let noise_uv_first = fract(snapped_mesh_uv + vec2(1.0, -1.0) * globals.time * time_scale_first);
-    // let noise_color_first = textureSample(noise_texture, noise_sampler, noise_uv_first) * distortion * 2;
-
-    // let noise_offset = noise_color_first + noise_color_second;
+    let snapped_mesh_uv = floor(mesh.uv / texel_size.xy + 0.5) * texel_size.xy;
 
     let noise_offset_x = noise_worley(snapped_mesh_uv * 6.0, globals.time);
     let noise_offset_y = noise_worley(snapped_mesh_uv * 6.0, -globals.time * 0.8);
     let noise_offset = vec2(noise_offset_x, noise_offset_y);
-    let snapped_offset = (floor(noise_offset / texel_size + 0.5) * texel_size) * distortion * texel_size;
+    let snapped_offset = (floor(noise_offset / texel_size.xy + 0.5) * texel_size.xy) * distortion * texel_size.xy;
 
     let uv = fract(snapped_mesh_uv + snapped_offset);
 
-    // return vec4(uv, 0.0, 1.0);
     return textureSample(texture, texture_sampler, uv);
 }

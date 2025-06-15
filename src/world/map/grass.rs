@@ -37,14 +37,14 @@ pub struct CutTallGrass {
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct GrassMaterial {
-    #[texture(0)]
-    #[sampler(1)]
+    #[uniform(0)]
+    pub texel_size: Vec4,
+    #[texture(1)]
+    #[sampler(2)]
     pub texture: Option<Handle<Image>>,
-    #[texture(2)]
-    #[sampler(3)]
+    #[texture(3)]
+    #[sampler(4)]
     pub noise: Option<Handle<Image>>,
-    #[uniform(4)]
-    pub texel_size: Vec2,
 }
 
 impl Default for NumberPopUp {
@@ -90,9 +90,9 @@ fn spawn_tall_grass(
         MeshMaterial2d(
             materials
                 .add(GrassMaterial {
+                    texel_size: (1.0 / image_size).extend(0.0).extend(0.0),
                     texture: Some(image_handle.clone()),
                     noise: Some(assets.noise_texture.clone()),
-                    texel_size: 1.0 / image_size,
                 })
                 .clone(),
         ),

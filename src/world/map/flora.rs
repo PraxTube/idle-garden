@@ -42,14 +42,11 @@ pub enum Flora {
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct FloraMaterial {
-    #[texture(0)]
-    #[sampler(1)]
+    #[uniform(0)]
+    pub texel_size: Vec4,
+    #[texture(1)]
+    #[sampler(2)]
     pub texture: Option<Handle<Image>>,
-    #[texture(2)]
-    #[sampler(3)]
-    pub noise_texture: Option<Handle<Image>>,
-    #[uniform(4)]
-    pub texel_size: Vec2,
 }
 
 impl Flora {
@@ -159,20 +156,17 @@ fn spawn_flora(
         return;
     };
 
+    let image_size = Vec2::new(image.width() as f32, image.height() as f32);
+
     commands.spawn((
         ChildOf(root),
-        Transform::from_translation(gfx_offset.extend(0.0)).with_scale(Vec3::new(
-            image.width() as f32,
-            image.height() as f32,
-            1.0,
-        )),
+        Transform::from_translation(gfx_offset.extend(0.0)).with_scale(image_size.extend(1.0)),
         Mesh2d(meshes.add(Rectangle::default())),
         MeshMaterial2d(
             materials
                 .add(FloraMaterial {
+                    texel_size: (1.0 / image_size).extend(0.0).extend(0.0),
                     texture: Some(image_handle.clone()),
-                    noise_texture: Some(assets.noise_texture.clone()),
-                    texel_size: Vec2::new(1.0 / image.width() as f32, 1.0 / image.height() as f32),
                 })
                 .clone(),
         ),
