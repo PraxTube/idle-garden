@@ -14,6 +14,8 @@ use flora::FloraData;
 use grass::CutTallGrass;
 use serde::{Deserialize, Serialize};
 
+#[cfg(target_arch = "wasm32")]
+use crate::ui::MenuActionEvent;
 use crate::{
     assets::FLORA_DATA_CORE,
     player::{GamingInput, Player},
@@ -57,7 +59,10 @@ impl Plugin for MapPlugin {
                 update_progression_core_on_item_bought,
                 update_points_per_second,
                 add_points.run_if(on_timer(Duration::from_secs(1))),
-                save_game_state,
+                #[cfg(target_arch = "wasm32")]
+                save_game_state_wasm,
+                #[cfg(target_arch = "wasm32")]
+                reset_game_state_wasm,
             )
                 .chain()
                 .in_set(ProgressionSystemSet)
@@ -144,6 +149,7 @@ impl MapData {
     /// Expects string to be of form
     ///
     /// usize,usize:u16;REPEAT
+    #[cfg(target_arch = "wasm32")]
     fn from_str(string: &str) -> Self {
         let mut map_data = MapData::empty();
 
@@ -174,6 +180,7 @@ impl MapData {
         map_data
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn to_string(&self) -> String {
         let mut string = String::new();
 
@@ -357,7 +364,7 @@ fn insert_progression_core(mut commands: Commands) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn save_game_state_wasm(core: &ProgressionCore, map_data: &MapData) {
+fn save_game_state_wasm(core: Res<ProgressionCore>, map_data: Res<MapData>) {
     use crate::assets::{WASM_MAP_DATA_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE};
 
     use web_sys::window;
@@ -375,14 +382,28 @@ fn save_game_state_wasm(core: &ProgressionCore, map_data: &MapData) {
     storage
         .set_item(
             WASM_PROGRESSION_CORE_KEY_STORAGE,
-            &serde_json::to_string(core).expect("failed to serialize progression core"),
+            &serde_json::to_string(&*core).expect("failed to serialize progression core"),
         )
         .expect("failed to set local storage progression core");
 }
 
-fn save_game_state(core: Res<ProgressionCore>, map_data: Res<MapData>) {
-    #[cfg(target_arch = "wasm32")]
-    save_game_state_wasm(&core, &map_data);
+#[cfg(target_arch = "wasm32")]
+fn reset_game_state_wasm(mut ev_menu_action: EventReader<MenuActionEvent>) {
+    use web_sys::window;
+
+    use crate::ui::MenuAction;
+
+    if ev_menu_action
+        .read()
+        .any(|ev| ev.action == MenuAction::Reset)
+    {
+        let storage = window()
+            .expect("failed to get window")
+            .local_storage()
+            .expect("failed to get local storage")
+            .expect("failed to unwrap local storage");
+        storage.clear().expect("failed to clear WASM local storage");
+    }
 }
 
 fn update_points_per_second(mut core: ResMut<ProgressionCore>, map_data: Res<MapData>) {
