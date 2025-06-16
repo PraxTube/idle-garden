@@ -60,7 +60,6 @@ fn main() {
                         DEFAULT_WINDOW_WIDTH,
                         DEFAULT_WINDOW_WIDTH * 9.0 / 16.0,
                     ),
-                    #[cfg(all(debug_assertions, target_arch = "wasm32"))]
                     fit_canvas_to_parent: true,
                     #[cfg(all(not(debug_assertions), target_arch = "wasm32"))]
                     canvas: Some("#game-canvas".to_string()),
