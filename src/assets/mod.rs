@@ -2,12 +2,22 @@ use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 
 pub const FLORA_DATA_CORE: &str = include_str!("../../assets/progression/flora.json");
+pub const FLORA_SHADER: &str = "shaders/flora_shader.wgsl";
+pub const GRASS_SHADER: &str = "shaders/grass_shader.wgsl";
+
+#[cfg(not(target_arch = "wasm32"))]
+pub const MAP_DATA_FILE: &str = "assets/save/map_data";
+#[cfg(not(target_arch = "wasm32"))]
+pub const PROGRESSION_CORE_FILE: &str = "assets/save/progression_core.json";
+#[cfg(not(target_arch = "wasm32"))]
+pub const PLAYER_SAVE_FILE: &str = "assets/save/player";
+
 #[cfg(target_arch = "wasm32")]
 pub const WASM_MAP_DATA_KEY_STORAGE: &str = "map-grid";
 #[cfg(target_arch = "wasm32")]
 pub const WASM_PROGRESSION_CORE_KEY_STORAGE: &str = "progression-core";
-pub const FLORA_SHADER: &str = "shaders/flora_shader.wgsl";
-pub const GRASS_SHADER: &str = "shaders/grass_shader.wgsl";
+#[cfg(target_arch = "wasm32")]
+pub const WASM_PLAYER_KEY_STORAGE: &str = "player";
 
 #[derive(AssetCollection, Resource)]
 pub struct GameAssets {

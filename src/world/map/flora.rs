@@ -17,7 +17,10 @@ use crate::{
     BachelorBuild, GameAssets,
 };
 
-use super::{ItemBought, MapData, EMPTY_CELL_VALUE, MAP_SIZE, PLAYER_BLOCKED_CELL_VALUE};
+use super::{
+    ItemBought, MapData, EMPTY_CELL_VALUE, MAP_SIZE, PLAYER_BLOCKED_CELL_VALUE,
+    TALL_GRASS_CELL_VALUE,
+};
 
 #[derive(Deserialize, Clone, Default)]
 pub struct FloraData {
@@ -40,6 +43,12 @@ pub enum Flora {
     SwampTree,
 }
 
+/// This is used as an Event, but because Events are a little more boiler plate I opted to use just
+/// a resource. We insert this when we spawn the flora, only after that do we want to spawn the
+/// grass (and only at places where there is no flora already).
+#[derive(Resource)]
+pub struct InitialFloraSpawned;
+
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct FloraMaterial {
     #[uniform(0)]
@@ -50,14 +59,13 @@ pub struct FloraMaterial {
 }
 
 impl Flora {
-    pub fn from_index(index: usize) -> Self {
-        match Self::from_repr(index) {
-            Some(r) => r,
-            None => {
-                error!("failed to create Flora from index, probably backwards incompatibility.");
-                Self::default()
-            }
+    pub fn from_index(index: usize) -> Option<Self> {
+        let maybe_flora = Self::from_repr(index);
+
+        if maybe_flora.is_none() {
+            error!("failed to create Flora from index, probably backwards incompatibility.");
         }
+        maybe_flora
     }
 
     fn last() -> Self {
@@ -213,17 +221,21 @@ fn spawn_flora_on_map_data_insertion(
     images: Res<Assets<Image>>,
     map_data: Res<MapData>,
 ) {
+    commands.insert_resource(InitialFloraSpawned);
     for x in 0..MAP_SIZE {
         for y in 0..MAP_SIZE {
-            if map_data.grid[x][y] == EMPTY_CELL_VALUE
-                || map_data.grid[x][y] == PLAYER_BLOCKED_CELL_VALUE
+            if map_data.grid_index(x, y) == EMPTY_CELL_VALUE
+                || map_data.grid_index(x, y) == PLAYER_BLOCKED_CELL_VALUE
+                || map_data.grid_index(x, y) == TALL_GRASS_CELL_VALUE
             {
                 continue;
             }
 
             let pos = map_data.grid_indices_to_pos(x, y);
 
-            let flora = Flora::from_index(map_data.grid_index(x, y).into());
+            let Some(flora) = Flora::from_index(map_data.grid_index(x, y).into()) else {
+                continue;
+            };
             let flora_data = map_data.flora_data(flora.index());
 
             spawn_flora(

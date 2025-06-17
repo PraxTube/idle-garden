@@ -16,10 +16,9 @@ use crate::{
 use crate::GameAssets;
 
 use super::{
-    MapData, ProgressionSystemSet, CUT_TALL_GRASS_POINTS, MAP_SIZE, TALL_GRASS_CELL_VALUE,
+    flora::InitialFloraSpawned, MapData, ProgressionSystemSet, CUT_TALL_GRASS_POINTS, MAP_SIZE,
+    TALL_GRASS_CELL_VALUE,
 };
-
-const GRASS_GRID_SIZE: (usize, usize) = (1, 1);
 
 #[derive(Component)]
 struct TallGrass;
@@ -107,17 +106,18 @@ fn spawn_grass(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<GrassMaterial>>,
     images: Res<Assets<Image>>,
-    mut map_data: ResMut<MapData>,
+    map_data: Res<MapData>,
 ) {
     let size = (MAP_SIZE / 2) as i32;
     for i in -size..size {
         for j in -size..size {
-            if i.abs() < 3 && j.abs() < 3 {
+            let pos = Vec2::new(i as f32 * TILE_SIZE, j as f32 * TILE_SIZE);
+
+            let (x, y) = map_data.pos_to_grid_indices(pos);
+            if map_data.grid_index(x, y) != TALL_GRASS_CELL_VALUE {
                 continue;
             }
 
-            let pos = Vec2::new(i as f32 * TILE_SIZE, j as f32 * TILE_SIZE);
-            map_data.set_map_data_value_at_pos(pos, GRASS_GRID_SIZE, TALL_GRASS_CELL_VALUE);
             spawn_tall_grass(
                 &mut commands,
                 &assets,
@@ -207,7 +207,10 @@ impl Plugin for MapGrassPlugin {
             .add_systems(
                 Update,
                 spawn_grass.run_if(
-                    resource_exists::<GameAssets>.and(resource_exists::<MapData>.and(run_once)),
+                    resource_exists::<GameAssets>
+                        .and(resource_exists::<MapData>)
+                        .and(resource_exists::<InitialFloraSpawned>)
+                        .and(run_once),
                 ),
             )
             .add_systems(

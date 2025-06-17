@@ -12,7 +12,8 @@ pub use collisions::{
 };
 pub use debug::DebugState;
 pub use map::{
-    Blueprint, BuildingSystemSet, Flora, MapData, ProgressionCore, ProgressionSystemSet, ZLevel,
+    Blueprint, BuildingSystemSet, Flora, InitialFloraSpawned, MapData, ProgressionCore,
+    ProgressionSystemSet, ZLevel,
 };
 
 use bevy::prelude::*;

@@ -45,6 +45,6 @@
     "ysort": 0,
     "gfx_offset": [0, 40],
     "collider_size": [8, 8],
-    "size_on_grid": [2, 1]
+    "size_on_grid": [1, 1]
   }
 }

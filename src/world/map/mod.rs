@@ -4,16 +4,20 @@ mod debug;
 mod flora;
 mod grass;
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::fs::{self, read_to_string};
 use std::{collections::HashMap, time::Duration};
 
 pub use building::{Blueprint, BuildingSystemSet};
-pub use flora::Flora;
+pub use flora::{Flora, InitialFloraSpawned};
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use flora::FloraData;
 use grass::CutTallGrass;
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::assets::{MAP_DATA_FILE, PLAYER_SAVE_FILE, PROGRESSION_CORE_FILE};
 #[cfg(target_arch = "wasm32")]
 use crate::ui::MenuActionEvent;
 use crate::{
@@ -59,8 +63,7 @@ impl Plugin for MapPlugin {
                 update_progression_core_on_item_bought,
                 update_points_per_second,
                 add_points.run_if(on_timer(Duration::from_secs(1))),
-                #[cfg(target_arch = "wasm32")]
-                save_game_state_wasm,
+                save_game_state,
                 #[cfg(target_arch = "wasm32")]
                 reset_game_state_wasm,
             )
@@ -68,6 +71,9 @@ impl Plugin for MapPlugin {
                 .in_set(ProgressionSystemSet)
                 .run_if(resource_exists::<MapData>.and(resource_exists::<ProgressionCore>)),
         );
+
+        // #[cfg(target_arch = "wasm32")]
+        // app.add_systems(Startup, hard_reset);
     }
 }
 
@@ -140,7 +146,7 @@ impl MapData {
 
     fn empty() -> Self {
         Self {
-            grid: vec![[EMPTY_CELL_VALUE; MAP_SIZE]; MAP_SIZE],
+            grid: vec![[TALL_GRASS_CELL_VALUE; MAP_SIZE]; MAP_SIZE],
             flora_data: Self::build_flora_data(),
             previous_player_blocked_cells: Vec::new(),
         }
@@ -149,7 +155,6 @@ impl MapData {
     /// Expects string to be of form
     ///
     /// usize,usize:u16;REPEAT
-    #[cfg(target_arch = "wasm32")]
     fn from_str(string: &str) -> Self {
         let mut map_data = MapData::empty();
 
@@ -180,7 +185,6 @@ impl MapData {
         map_data
     }
 
-    #[cfg(target_arch = "wasm32")]
     fn to_string(&self) -> String {
         let mut string = String::new();
 
@@ -240,7 +244,8 @@ impl MapData {
         self.flora_data[index].clone()
     }
 
-    fn fits_at_grid_position(&self, x: usize, y: usize, x_size: usize, y_size: usize) -> bool {
+    /// Return whether the cells at the given position with the size are all empty.
+    fn fits_at_empty_position(&self, x: usize, y: usize, x_size: usize, y_size: usize) -> bool {
         debug_assert_ne!(x_size, 0);
         debug_assert_ne!(y_size, 0);
 
@@ -257,7 +262,7 @@ impl MapData {
     fn fits_at_pos(&self, pos: Vec2, object_size: (usize, usize)) -> bool {
         let (x, y) = self.pos_to_grid_indices(pos);
         let (x_size, y_size) = object_size;
-        self.fits_at_grid_position(x, y, x_size, y_size)
+        self.fits_at_empty_position(x, y, x_size, y_size)
     }
 
     fn set_map_data_value_at_pos(
@@ -269,7 +274,15 @@ impl MapData {
         let (x, y) = self.pos_to_grid_indices(bottom_left_corner_pos);
         let (x_size, y_size) = object_size;
 
-        debug_assert!(self.fits_at_grid_position(x, y, x_size, y_size));
+        debug_assert!(
+            self.fits_at_empty_position(x, y, x_size, y_size),
+            "value: {}, pos: {}, (x, y): {}, {}, grid: {}",
+            value,
+            bottom_left_corner_pos,
+            x,
+            y,
+            self.grid[x][y]
+        );
 
         for inner_x in 0..x_size {
             for inner_y in 0..y_size {
@@ -300,7 +313,7 @@ impl ZLevel {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn insert_map_data_resource_wasm(commands: &mut Commands) {
+fn insert_map_data_wasm(commands: &mut Commands) {
     use crate::assets::WASM_MAP_DATA_KEY_STORAGE;
 
     use web_sys::window;
@@ -322,12 +335,19 @@ fn insert_map_data_resource_wasm(commands: &mut Commands) {
     commands.insert_resource(map_data);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn insert_map_data_native(commands: &mut Commands) {
+    let raw_map_data = read_to_string(MAP_DATA_FILE).expect("failed to read map data file");
+    let map_data = MapData::from_str(&raw_map_data);
+    commands.insert_resource(map_data);
+}
+
 fn insert_map_data_resource(mut commands: Commands) {
     #[cfg(target_arch = "wasm32")]
-    insert_map_data_resource_wasm(&mut commands);
+    insert_map_data_wasm(&mut commands);
 
     #[cfg(not(target_arch = "wasm32"))]
-    commands.insert_resource(MapData::empty());
+    insert_map_data_native(&mut commands);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -355,25 +375,57 @@ fn insert_progression_core_wasm(commands: &mut Commands) {
     commands.insert_resource(core);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn insert_progression_core_native(commands: &mut Commands) {
+    let raw_core =
+        read_to_string(PROGRESSION_CORE_FILE).expect("failed to read progression core file");
+    let core = if raw_core.is_empty() {
+        ProgressionCore::empty()
+    } else {
+        serde_json::from_str(&raw_core).expect("failed to parse progression core from json string")
+    };
+    commands.insert_resource(core);
+}
+
 fn insert_progression_core(mut commands: Commands) {
     #[cfg(target_arch = "wasm32")]
     insert_progression_core_wasm(&mut commands);
 
     #[cfg(not(target_arch = "wasm32"))]
-    commands.insert_resource(ProgressionCore::empty());
+    insert_progression_core_native(&mut commands);
 }
 
 #[cfg(target_arch = "wasm32")]
-fn save_game_state_wasm(core: Res<ProgressionCore>, map_data: Res<MapData>) {
-    use crate::assets::{WASM_MAP_DATA_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE};
+fn save_game_state_wasm(
+    core: &ProgressionCore,
+    map_data: &MapData,
+    q_player: &Query<&Transform, With<Player>>,
+) {
+    use crate::assets::{
+        WASM_MAP_DATA_KEY_STORAGE, WASM_PLAYER_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE,
+    };
 
     use web_sys::window;
+
+    let Ok(player_transform) = q_player.single() else {
+        return;
+    };
 
     let storage = window()
         .expect("failed to get window")
         .local_storage()
         .expect("failed to get local storage")
         .expect("failed to unwrap local storage");
+
+    storage
+        .set_item(
+            WASM_PLAYER_KEY_STORAGE,
+            &format!(
+                "{},{}",
+                player_transform.translation.x, player_transform.translation.y
+            ),
+        )
+        .expect("failed to set local storage for player");
 
     storage
         .set_item(WASM_MAP_DATA_KEY_STORAGE, &map_data.to_string())
@@ -385,6 +437,56 @@ fn save_game_state_wasm(core: Res<ProgressionCore>, map_data: Res<MapData>) {
             &serde_json::to_string(&*core).expect("failed to serialize progression core"),
         )
         .expect("failed to set local storage progression core");
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save_game_state_native(
+    core: &ProgressionCore,
+    map_data: &MapData,
+    q_player: &Query<&Transform, With<Player>>,
+) {
+    let Ok(player_transform) = q_player.single() else {
+        return;
+    };
+
+    fs::write(
+        PROGRESSION_CORE_FILE,
+        &serde_json::to_string(core).expect("failed to serialize progression core"),
+    )
+    .expect("failed to write progression core to file");
+    fs::write(MAP_DATA_FILE, map_data.to_string()).expect("failed to write to map data file");
+    fs::write(
+        PLAYER_SAVE_FILE,
+        &format!(
+            "{},{}",
+            player_transform.translation.x, player_transform.translation.y
+        ),
+    )
+    .expect("faield to write player save file");
+}
+
+fn save_game_state(
+    core: Res<ProgressionCore>,
+    map_data: Res<MapData>,
+    q_player: Query<&Transform, With<Player>>,
+) {
+    #[cfg(target_arch = "wasm32")]
+    save_game_state_wasm(&core, &map_data, &q_player);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    save_game_state_native(&core, &map_data, &q_player);
+}
+
+#[cfg(target_arch = "wasm32")]
+fn hard_reset() {
+    use web_sys::window;
+
+    let storage = window()
+        .expect("failed to get window")
+        .local_storage()
+        .expect("failed to get local storage")
+        .expect("failed to unwrap local storage");
+    storage.clear().expect("failed to clear WASM local storage");
 }
 
 #[cfg(target_arch = "wasm32")]
