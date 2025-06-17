@@ -1,5 +1,5 @@
 use bevy::{
-    color::palettes::css::{DARK_GRAY, GRAY},
+    color::palettes::css::{DARK_GRAY, GRAY, RED},
     prelude::*,
     text::FontSmoothing,
     ui::RelativeCursorPosition,
@@ -10,6 +10,8 @@ use crate::{
     world::{Flora, MapData, ProgressionCore},
     GameAssets, GameState, DEFAULT_WINDOW_WIDTH,
 };
+
+use super::outline::TextOutline;
 
 const STORE_ROOT_PADDING_VERTICAL: f32 = 40.0;
 const STORE_ROOT_PADDING_HORIZONTAL: f32 = 150.0;
@@ -28,11 +30,13 @@ struct StoreItem {
     index: usize,
 }
 #[derive(Component)]
-struct StoreItemIcon;
+struct ItemIcon;
 #[derive(Component)]
-struct StoreItemCountText;
+struct ItemCountText;
 #[derive(Component)]
-struct StoreItemUnaffordableOverlay;
+struct ItemCostText;
+#[derive(Component)]
+struct ItemUnaffordableOverlay;
 
 #[derive(Resource, Default)]
 struct StorePageItems {
@@ -57,10 +61,118 @@ impl StorePageItems {
 }
 
 #[derive(Component, Default)]
-pub struct Navigator {
-    /// The currently highlighted item (ready to be triggered).
-    /// If you don't want to start with any item selected from the start, leave this empty.
-    pub highlighted_item: Option<Entity>,
+struct Navigator {
+    highlighted_item: Option<Entity>,
+}
+
+fn spawn_store_item(
+    commands: &mut Commands,
+    assets: &GameAssets,
+    items_container: Entity,
+    item: StoreItem,
+) {
+    let item_root = commands
+        .spawn((
+            ChildOf(items_container),
+            Button,
+            item,
+            Node {
+                height: Val::Percent(70.0),
+                aspect_ratio: Some(1.0),
+                align_self: AlignSelf::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            ImageNode {
+                color: GRAY.into(),
+                image: Handle::<Image>::default(),
+                ..default()
+            },
+        ))
+        .id();
+
+    commands.spawn((
+        ChildOf(item_root),
+        ItemIcon,
+        Node {
+            width: Val::Percent(80.0),
+            height: Val::Percent(80.0),
+            align_self: AlignSelf::Center,
+            position_type: PositionType::Absolute,
+            ..default()
+        },
+        ImageNode {
+            image: Flora::default().icon(&assets),
+            ..default()
+        },
+        ZIndex(1),
+    ));
+
+    commands.spawn((
+        ChildOf(item_root),
+        ItemCountText,
+        Node {
+            bottom: Val::Px(0.0),
+            position_type: PositionType::Absolute,
+            ..default()
+        },
+        TextOutline::new(
+            "x69".to_string(),
+            1.0,
+            Color::WHITE,
+            Color::BLACK,
+            TextFont {
+                font: assets.pixel_font.clone(),
+                font_size: 20.0,
+                font_smoothing: FontSmoothing::None,
+                ..default()
+            },
+        ),
+        ZIndex(3),
+    ));
+
+    commands.spawn((
+        ItemCostText,
+        ChildOf(item_root),
+        Node {
+            top: Val::Px(-50.0),
+            position_type: PositionType::Absolute,
+            ..default()
+        },
+        Visibility::Hidden,
+        TextOutline::new(
+            "$431".to_string(),
+            1.0,
+            Color::WHITE,
+            Color::BLACK,
+            TextFont {
+                font: assets.pixel_font.clone(),
+                font_size: 20.0,
+                font_smoothing: FontSmoothing::None,
+                ..default()
+            },
+        ),
+        ZIndex(3),
+    ));
+
+    commands.spawn((
+        ChildOf(item_root),
+        ItemUnaffordableOverlay,
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            align_self: AlignSelf::Center,
+            position_type: PositionType::Absolute,
+            ..default()
+        },
+        Visibility::Hidden,
+        ImageNode {
+            image: Handle::<Image>::default(),
+            color: Color::BLACK.with_alpha(0.5),
+            ..default()
+        },
+        ZIndex(3),
+    ));
 }
 
 fn spawn_store(mut commands: Commands, assets: Res<GameAssets>) {
@@ -119,80 +231,7 @@ fn spawn_store(mut commands: Commands, assets: Res<GameAssets>) {
         .id();
 
     for index in 0..NUMBER_OF_ITEMS_ON_PAGE {
-        let item_root = commands
-            .spawn((
-                ChildOf(items_container),
-                Button,
-                StoreItem { index },
-                Node {
-                    height: Val::Percent(70.0),
-                    aspect_ratio: Some(1.0),
-                    align_self: AlignSelf::Center,
-                    justify_content: JustifyContent::Center,
-                    ..default()
-                },
-                ImageNode {
-                    color: GRAY.into(),
-                    image: Handle::<Image>::default(),
-                    ..default()
-                },
-            ))
-            .id();
-
-        commands.spawn((
-            ChildOf(item_root),
-            StoreItemIcon,
-            Node {
-                width: Val::Percent(80.0),
-                height: Val::Percent(80.0),
-                align_self: AlignSelf::Center,
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-            ImageNode {
-                image: Flora::default().icon(&assets),
-                ..default()
-            },
-            ZIndex(1),
-        ));
-
-        commands.spawn((
-            ChildOf(item_root),
-            StoreItemCountText,
-            Text("x300".to_string()),
-            Node {
-                bottom: Val::Px(-20.0),
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-            TextFont {
-                font: assets.pixel_font.clone(),
-                font_size: 20.0,
-                font_smoothing: FontSmoothing::None,
-                ..default()
-            },
-            TextColor(Color::BLACK),
-            ZIndex(2),
-        ));
-
-        commands.spawn((
-            ChildOf(item_root),
-            StoreItemUnaffordableOverlay,
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                align_self: AlignSelf::Center,
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-            Visibility::Hidden,
-            ImageNode {
-                image: Handle::<Image>::default(),
-                color: Color::BLACK.with_alpha(0.5),
-                ..default()
-            },
-            ZIndex(3),
-        ));
+        spawn_store_item(&mut commands, &assets, items_container, StoreItem { index });
     }
 }
 
@@ -259,7 +298,7 @@ fn highlight_item(
 fn toggle_item_unaffordable_overlay(
     store_page: Res<StorePageItems>,
     q_items: Query<&StoreItem>,
-    mut q_overlays: Query<(&ChildOf, &mut Visibility), With<StoreItemUnaffordableOverlay>>,
+    mut q_overlays: Query<(&ChildOf, &mut Visibility), With<ItemUnaffordableOverlay>>,
 ) {
     for (parent, mut visibility) in &mut q_overlays {
         let Ok(item) = q_items.get(parent.0) else {
@@ -271,6 +310,52 @@ fn toggle_item_unaffordable_overlay(
         } else {
             Visibility::Inherited
         };
+    }
+}
+
+fn hide_item_cost_texts(mut q_cost_texts: Query<&mut Visibility, With<ItemCostText>>) {
+    for mut visibility in &mut q_cost_texts {
+        *visibility = Visibility::Hidden;
+    }
+}
+
+fn update_item_cost_text(
+    map_data: Res<MapData>,
+    store_page: Res<StorePageItems>,
+    q_navigator: Query<&Navigator>,
+    q_items: Query<&StoreItem>,
+    mut q_cost_texts: Query<(&ChildOf, &mut Visibility, &mut TextOutline), With<ItemCostText>>,
+) {
+    let Ok(navigator) = q_navigator.single() else {
+        return;
+    };
+
+    let Some(highlighted_item) = navigator.highlighted_item else {
+        return;
+    };
+
+    for (parent, mut visibility, mut outline) in &mut q_cost_texts {
+        if parent.parent() != highlighted_item {
+            continue;
+        }
+
+        let Ok(store_item) = q_items.get(highlighted_item) else {
+            continue;
+        };
+
+        let color = if store_page.is_affordable[store_item.index] {
+            Color::WHITE
+        } else {
+            RED.into()
+        };
+
+        let item = store_page.items[store_item.index];
+        let cost = map_data.flora_data(item.index()).cost;
+
+        outline.text = format!("${}", cost);
+        outline.color = color;
+
+        *visibility = Visibility::Inherited;
     }
 }
 
@@ -309,15 +394,15 @@ fn update_store_item_count_texts(
     core: Res<ProgressionCore>,
     store_page: Res<StorePageItems>,
     q_items: Query<(&Children, &StoreItem)>,
-    mut q_texts: Query<&mut Text, With<StoreItemCountText>>,
+    mut q_outlines: Query<&mut TextOutline, With<ItemCountText>>,
 ) {
     for (children, item) in &q_items {
         for child in children {
-            let Ok(mut text) = q_texts.get_mut(*child) else {
+            let Ok(mut outline) = q_outlines.get_mut(*child) else {
                 continue;
             };
 
-            text.0 = format!(
+            outline.text = format!(
                 "x{}",
                 core.flora[store_page.get_by_index(item.index).index()]
             );
@@ -329,7 +414,7 @@ fn update_store_item_icons(
     assets: Res<GameAssets>,
     store_page: Res<StorePageItems>,
     q_items: Query<(&Children, &StoreItem)>,
-    mut q_image_nodes: Query<&mut ImageNode, With<StoreItemIcon>>,
+    mut q_image_nodes: Query<&mut ImageNode, With<ItemIcon>>,
 ) {
     for (children, item) in &q_items {
         for child in children {
@@ -372,6 +457,8 @@ impl Plugin for UiStorePlugin {
                     trigger_button_pressed,
                     update_store_item_count_texts.run_if(resource_exists::<ProgressionCore>),
                     toggle_item_unaffordable_overlay,
+                    hide_item_cost_texts,
+                    update_item_cost_text.run_if(resource_exists::<MapData>),
                 )
                     .chain(),
             )

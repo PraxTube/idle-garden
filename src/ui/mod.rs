@@ -1,4 +1,5 @@
 mod menu;
+mod outline;
 mod stats;
 mod store;
 
@@ -14,6 +15,7 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
+            outline::UiOutlinePlugin,
             stats::UiStatsPlugin,
             store::UiStorePlugin,
             menu::UiMenuPlugin,
