@@ -434,14 +434,14 @@ fn despawn_reset_pop_up(
     q_reset_pop_up: Query<Entity, With<ResetPopUp>>,
     mut ev_menu_action: EventReader<MenuActionEvent>,
 ) {
-    let Ok(entity) = q_reset_pop_up.single() else {
-        return;
-    };
-
-    let input = gaming_input.menu || gaming_input.cancel;
     let event = ev_menu_action
         .read()
         .any(|ev| ev.action == MenuAction::CancelReset);
+    let input = gaming_input.menu || gaming_input.cancel;
+
+    let Ok(entity) = q_reset_pop_up.single() else {
+        return;
+    };
 
     if input || event {
         commands.entity(entity).despawn();
@@ -504,6 +504,45 @@ fn remove_non_interactable_from_reset_button(
     }
 }
 
+fn set_buttons_inactive_on_reset_pop_up(
+    mut commands: Commands,
+    q_buttons: Query<(Entity, &MenuData)>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    if ev_menu_action
+        .read()
+        .any(|ev| ev.action == MenuAction::ResetPopUp)
+    {
+        for (entity, menu_data) in &q_buttons {
+            match menu_data.action {
+                MenuAction::Reset | MenuAction::CancelReset => continue,
+                _ => {}
+            }
+
+            commands.entity(entity).insert(NonInteractable);
+        }
+    }
+}
+
+fn set_buttons_active_on_reset_cancel(
+    mut commands: Commands,
+    q_buttons: Query<(Entity, &MenuData)>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    if ev_menu_action
+        .read()
+        .any(|ev| ev.action == MenuAction::CancelReset)
+    {
+        for (entity, menu_data) in &q_buttons {
+            match menu_data.action {
+                MenuAction::Reset | MenuAction::CancelReset => continue,
+                _ => {}
+            }
+            commands.entity(entity).remove::<NonInteractable>();
+        }
+    }
+}
+
 pub struct UiMenuPlugin;
 
 impl Plugin for UiMenuPlugin {
@@ -526,6 +565,8 @@ impl Plugin for UiMenuPlugin {
                     update_reset_pop_up_timer_text,
                     remove_reset_pop_up_timer_component,
                     remove_non_interactable_from_reset_button,
+                    set_buttons_active_on_reset_cancel,
+                    set_buttons_inactive_on_reset_pop_up,
                 )
                     .chain()
                     .run_if(resource_exists::<GameAssets>),

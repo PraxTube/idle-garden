@@ -114,6 +114,7 @@ impl FloraData {
     /// Offset that will center the item based on its grid size.
     /// Has nothing to do with the `gfx_offset`, they are two separate things.
     /// Altough they are often very similar.
+    #[allow(dead_code)]
     fn size_offset(&self) -> Vec2 {
         let (x, y) = self.size_on_grid;
 
