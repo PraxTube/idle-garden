@@ -13,12 +13,14 @@ struct OutlineManager {
 }
 
 #[derive(Component)]
+#[require(Visibility, Node)]
 pub struct TextOutline {
     pub text: String,
     strength: f32,
     pub color: Color,
     outline_color: Color,
     font: TextFont,
+    center_text: bool,
 }
 
 impl TextOutline {
@@ -28,6 +30,7 @@ impl TextOutline {
         color: Color,
         outline_color: Color,
         font: TextFont,
+        center_text: bool,
     ) -> Self {
         Self {
             text,
@@ -35,6 +38,7 @@ impl TextOutline {
             color,
             outline_color,
             font,
+            center_text,
         }
     }
 }
@@ -47,6 +51,12 @@ fn spawn_text(
     offset: Vec2,
     zindex: i32,
 ) -> Entity {
+    let justify_content = if outline.center_text {
+        JustifyContent::Center
+    } else {
+        JustifyContent::DEFAULT
+    };
+
     let container = commands
         .spawn((
             ChildOf(parent),
@@ -60,8 +70,7 @@ fn spawn_text(
                 left: Val::Px(
                     offset.x * outline.font.font_size * outline.strength * PIXEL_FONT_TEXEL,
                 ),
-                align_self: AlignSelf::Center,
-                justify_content: JustifyContent::Center,
+                justify_content,
                 position_type: PositionType::Absolute,
                 ..default()
             },
@@ -75,8 +84,11 @@ fn spawn_text(
                 position_type: PositionType::Absolute,
                 ..default()
             },
-            ZIndex(-1),
             Text::new(&outline.text),
+            TextLayout {
+                linebreak: LineBreak::NoWrap,
+                ..default()
+            },
             outline.font.clone(),
             TextColor(color),
         ))

@@ -1,19 +1,11 @@
-use bevy::{prelude::*, text::FontSmoothing, ui::RelativeCursorPosition};
+use bevy::{prelude::*, text::FontSmoothing};
 
 use crate::{world::ProgressionCore, GameAssets, GameState};
 
-const PADDING: f32 = 50.0;
-const HEIGHT: f32 = 100.0;
-const WIDTH: f32 = 300.0;
-const STATS_PADDING_TOP: f32 = 10.0;
-const STATS_PADDING_LEFT: f32 = 10.0;
+use super::outline::TextOutline;
 
 #[derive(Component)]
 struct StatsRoot;
-#[derive(Component)]
-struct StatsBackground;
-#[derive(Component)]
-struct StatsContainer;
 #[derive(Component)]
 struct PointsText;
 #[derive(Component)]
@@ -24,47 +16,23 @@ fn spawn_stats(mut commands: Commands, assets: Res<GameAssets>) {
         .spawn((
             StatsRoot,
             Node {
-                left: Val::Px(PADDING),
-                top: Val::Px(PADDING),
-                height: Val::Px(HEIGHT),
-                width: Val::Px(WIDTH),
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                align_self: AlignSelf::Center,
+                justify_content: JustifyContent::Center,
                 position_type: PositionType::Absolute,
                 ..default()
             },
         ))
         .id();
 
-    commands.spawn((
-        ChildOf(root),
-        RelativeCursorPosition::default(),
-        StatsBackground,
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            position_type: PositionType::Absolute,
-            ..default()
-        },
-        ZIndex(-1),
-        ImageNode {
-            color: Color::WHITE,
-            image: Handle::<Image>::default(),
-            ..default()
-        },
-    ));
-
     let container = commands
         .spawn((
             ChildOf(root),
-            StatsContainer,
             Node {
-                width: Val::Percent(100.0),
+                width: Val::Percent(90.0),
                 height: Val::Percent(100.0),
-                padding: UiRect {
-                    top: Val::Px(STATS_PADDING_TOP),
-                    left: Val::Px(STATS_PADDING_LEFT),
-                    ..default()
-                },
-                flex_direction: FlexDirection::Column,
+                top: Val::Px(50.0),
                 position_type: PositionType::Absolute,
                 ..default()
             },
@@ -74,47 +42,71 @@ fn spawn_stats(mut commands: Commands, assets: Res<GameAssets>) {
     commands.spawn((
         ChildOf(container),
         PointsText,
-        Text("Points: 313012".to_string()),
-        TextColor(Color::BLACK),
-        TextFont {
-            font: assets.pixel_font.clone(),
-            font_size: 15.0,
-            font_smoothing: FontSmoothing::None,
+        Node {
+            left: Val::Px(0.0),
+            top: Val::Px(0.0),
             ..default()
         },
+        TextOutline::new(
+            "$313101".to_string(),
+            1.0,
+            Color::WHITE,
+            Color::BLACK,
+            TextFont {
+                font: assets.pixel_font.clone(),
+                font_size: 35.0,
+                font_smoothing: FontSmoothing::None,
+                ..default()
+            },
+            false,
+        ),
     ));
 
     commands.spawn((
         ChildOf(container),
         PointsPerSecondText,
-        Text("Points/s: 3123".to_string()),
-        TextColor(Color::BLACK),
-        TextFont {
-            font: assets.pixel_font.clone(),
-            font_size: 15.0,
-            font_smoothing: FontSmoothing::None,
+        Node {
+            left: Val::Px(0.0),
+            top: Val::Px(60.0),
+            width: Val::Percent(100.0),
             ..default()
         },
+        TextOutline::new(
+            "$313101/s".to_string(),
+            1.0,
+            Color::WHITE,
+            Color::BLACK,
+            TextFont {
+                font: assets.pixel_font.clone(),
+                font_size: 35.0,
+                font_smoothing: FontSmoothing::None,
+                ..default()
+            },
+            false,
+        ),
     ));
 }
 
-fn update_points_text(core: Res<ProgressionCore>, mut q_text: Query<&mut Text, With<PointsText>>) {
-    let Ok(mut text) = q_text.single_mut() else {
+fn update_points_text(
+    core: Res<ProgressionCore>,
+    mut q_text: Query<&mut TextOutline, With<PointsText>>,
+) {
+    let Ok(mut outline) = q_text.single_mut() else {
         return;
     };
 
-    text.0 = format!("Points: {:>8}", core.points)
+    outline.text = format!("${}", core.points)
 }
 
 fn update_points_per_second_text(
     core: Res<ProgressionCore>,
-    mut q_text: Query<&mut Text, With<PointsPerSecondText>>,
+    mut q_text: Query<&mut TextOutline, With<PointsPerSecondText>>,
 ) {
-    let Ok(mut text) = q_text.single_mut() else {
+    let Ok(mut outline) = q_text.single_mut() else {
         return;
     };
 
-    text.0 = format!("Points/s: {:>6}", core.pps)
+    outline.text = format!("+{}/s", core.pps)
 }
 
 pub struct UiStatsPlugin;

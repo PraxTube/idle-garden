@@ -90,7 +90,7 @@ fn spawn_store_item(
         ChildOf(item_root),
         ItemIcon,
         Node {
-            height: Val::Percent(60.0),
+            height: Val::Percent(65.0),
             aspect_ratio: Some(1.0),
             align_self: AlignSelf::Center,
             position_type: PositionType::Absolute,
@@ -122,6 +122,7 @@ fn spawn_store_item(
                 font_smoothing: FontSmoothing::None,
                 ..default()
             },
+            true,
         ),
         ZIndex(3),
     ));
@@ -146,6 +147,7 @@ fn spawn_store_item(
                 font_smoothing: FontSmoothing::None,
                 ..default()
             },
+            true,
         ),
         ZIndex(3),
     ));
