@@ -193,8 +193,11 @@ fn spawn_menu(mut commands: Commands, assets: Res<GameAssets>) {
         .add_children(&[background, button_container]);
 }
 
-fn despawn_menu(mut commands: Commands, q_menu: Query<Entity, With<MenuScreen>>) {
-    for entity in &q_menu {
+fn despawn_menu(
+    mut commands: Commands,
+    q_menus: Query<Entity, Or<(With<MenuScreen>, With<ResetPopUp>)>>,
+) {
+    for entity in &q_menus {
         commands.entity(entity).despawn();
     }
 }

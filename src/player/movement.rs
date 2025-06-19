@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 
+use crate::ui::{MenuAction, MenuActionEvent};
 use crate::world::Velocity;
 use crate::GameState;
 
 use super::input::GamingInput;
+use super::spawn::DEFAULT_PLAYER_SPAWN_POS;
 use super::{Player, MOVE_SPEED};
 
 fn reset_velocity(mut q_player: Query<&mut Velocity, With<Player>>) {
@@ -11,6 +13,24 @@ fn reset_velocity(mut q_player: Query<&mut Velocity, With<Player>>) {
         return;
     };
     *velocity = Velocity::default();
+}
+
+fn set_player_pos_to_default_on_reset(
+    mut q_player: Query<&mut Transform, With<Player>>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    if !ev_menu_action
+        .read()
+        .any(|ev| ev.action == MenuAction::Reset)
+    {
+        return;
+    }
+
+    let Ok(mut transform) = q_player.single_mut() else {
+        return;
+    };
+
+    transform.translation = DEFAULT_PLAYER_SPAWN_POS.extend(0.0);
 }
 
 fn move_running(
@@ -30,7 +50,10 @@ pub struct PlayerMovementPlugin;
 
 impl Plugin for PlayerMovementPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, reset_velocity)
-            .add_systems(Update, move_running.run_if(in_state(GameState::Gaming)));
+        app.add_systems(
+            PreUpdate,
+            (reset_velocity, set_player_pos_to_default_on_reset),
+        )
+        .add_systems(Update, move_running.run_if(in_state(GameState::Gaming)));
     }
 }

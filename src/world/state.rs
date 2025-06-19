@@ -20,10 +20,11 @@ fn switch_to_gaming_state_from_menu(
     mut next_state: ResMut<NextState<GameState>>,
     mut ev_menu_action: EventReader<MenuActionEvent>,
 ) {
-    for ev in ev_menu_action.read() {
-        if ev.action == MenuAction::Continue {
-            next_state.set(GameState::Gaming);
-        }
+    if ev_menu_action
+        .read()
+        .any(|ev| ev.action == MenuAction::Continue || ev.action == MenuAction::Reset)
+    {
+        next_state.set(GameState::Gaming);
     }
 }
 

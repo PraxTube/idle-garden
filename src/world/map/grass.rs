@@ -7,6 +7,7 @@ use bevy::{
 
 use crate::{
     assets::GRASS_SHADER,
+    ui::{MenuAction, MenuActionEvent},
     world::{
         collisions::{IntersectionEvent, StaticSensorAABB, GRASS_COLLISION_GROUPS},
         ZLevel, TILE_SIZE,
@@ -130,6 +131,23 @@ fn spawn_grass(
     }
 }
 
+fn spawn_grass_on_reset(
+    commands: Commands,
+    assets: Res<GameAssets>,
+    meshes: ResMut<Assets<Mesh>>,
+    materials: ResMut<Assets<GrassMaterial>>,
+    images: Res<Assets<Image>>,
+    map_data: Res<MapData>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    if ev_menu_action
+        .read()
+        .any(|ev| ev.action == MenuAction::Reset)
+    {
+        spawn_grass(commands, assets, meshes, materials, images, map_data);
+    }
+}
+
 fn despawn_tall_grass(mut commands: Commands, mut ev_cut_tall_grass: EventReader<CutTallGrass>) {
     for ev in ev_cut_tall_grass.read() {
         commands.entity(ev.entity).despawn();
@@ -206,12 +224,11 @@ impl Plugin for MapGrassPlugin {
             .add_event::<CutTallGrass>()
             .add_systems(
                 Update,
-                spawn_grass.run_if(
-                    resource_exists::<GameAssets>
-                        .and(resource_exists::<MapData>)
-                        .and(resource_exists::<InitialFloraSpawned>)
-                        .and(run_once),
-                ),
+                (
+                    spawn_grass.run_if(resource_exists::<InitialFloraSpawned>.and(run_once)),
+                    spawn_grass_on_reset.after(ProgressionSystemSet),
+                )
+                    .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
             )
             .add_systems(
                 Update,

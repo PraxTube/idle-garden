@@ -14,11 +14,11 @@ use super::Player;
 
 pub const COLLIDER_RADIUS: f32 = 2.5;
 pub const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -12.5);
-const DEFAULT_POS: Vec2 = Vec2::ZERO;
+pub const DEFAULT_PLAYER_SPAWN_POS: Vec2 = Vec2::ZERO;
 
 fn player_from_string(raw_player: &str) -> Vec2 {
     if raw_player.is_empty() {
-        return DEFAULT_POS;
+        return DEFAULT_PLAYER_SPAWN_POS;
     }
 
     let parts = raw_player

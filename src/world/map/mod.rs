@@ -18,12 +18,10 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::assets::{MAP_DATA_FILE, PLAYER_SAVE_FILE, PROGRESSION_CORE_FILE};
-#[cfg(target_arch = "wasm32")]
-use crate::ui::MenuActionEvent;
 use crate::{
     assets::FLORA_DATA_CORE,
     player::{GamingInput, Player},
-    ui::ItemPressed,
+    ui::{ItemPressed, MenuAction, MenuActionEvent},
     BachelorBuild, GameState,
 };
 
@@ -63,9 +61,8 @@ impl Plugin for MapPlugin {
                 update_progression_core_on_item_bought,
                 update_points_per_second,
                 add_points.run_if(on_timer(Duration::from_secs(1))),
+                reset_game_state,
                 save_game_state,
-                #[cfg(target_arch = "wasm32")]
-                reset_game_state_wasm,
             )
                 .chain()
                 .in_set(ProgressionSystemSet)
@@ -467,6 +464,7 @@ fn save_game_state_native(
     .expect("faield to write player save file");
 }
 
+// TODO: Make saving periodic, right now you are saving EVERY FRAME
 fn save_game_state(
     core: Res<ProgressionCore>,
     map_data: Res<MapData>,
@@ -491,23 +489,20 @@ fn hard_reset() {
     storage.clear().expect("failed to clear WASM local storage");
 }
 
-#[cfg(target_arch = "wasm32")]
-fn reset_game_state_wasm(mut ev_menu_action: EventReader<MenuActionEvent>) {
-    use web_sys::window;
-
-    use crate::ui::MenuAction;
-
-    if ev_menu_action
+fn reset_game_state(
+    mut core: ResMut<ProgressionCore>,
+    mut map_data: ResMut<MapData>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    if !ev_menu_action
         .read()
         .any(|ev| ev.action == MenuAction::Reset)
     {
-        let storage = window()
-            .expect("failed to get window")
-            .local_storage()
-            .expect("failed to get local storage")
-            .expect("failed to unwrap local storage");
-        storage.clear().expect("failed to clear WASM local storage");
+        return;
     }
+
+    *core = ProgressionCore::empty();
+    *map_data = MapData::empty();
 }
 
 fn update_points_per_second(mut core: ResMut<ProgressionCore>, map_data: Res<MapData>) {

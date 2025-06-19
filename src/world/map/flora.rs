@@ -9,6 +9,7 @@ use strum::FromRepr;
 
 use crate::{
     assets::FLORA_SHADER,
+    ui::{MenuAction, MenuActionEvent},
     world::{
         camera::YSort,
         collisions::{StaticCollider, WORLD_COLLISION_GROUPS},
@@ -48,6 +49,9 @@ pub enum Flora {
 /// grass (and only at places where there is no flora already).
 #[derive(Resource)]
 pub struct InitialFloraSpawned;
+
+#[derive(Component)]
+struct FloraMarker;
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct FloraMaterial {
@@ -151,6 +155,7 @@ fn spawn_flora(
 
     let root = commands
         .spawn((
+            FloraMarker,
             Transform::from_translation(pos.extend(0.0)),
             ysort,
             Visibility::Inherited,
@@ -253,6 +258,23 @@ fn spawn_flora_on_map_data_insertion(
     }
 }
 
+fn despawn_flora_on_reset(
+    mut commands: Commands,
+    q_floras: Query<Entity, With<FloraMarker>>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    if !ev_menu_action
+        .read()
+        .any(|ev| ev.action == MenuAction::Reset)
+    {
+        return;
+    }
+
+    for entity in &q_floras {
+        commands.entity(entity).despawn();
+    }
+}
+
 pub struct MapFloraPlugin;
 
 impl Plugin for MapFloraPlugin {
@@ -270,6 +292,7 @@ impl Plugin for MapFloraPlugin {
                             .and(resource_exists::<MapData>)
                             .and(run_once),
                     ),
+                    despawn_flora_on_reset,
                 ),
             );
     }
