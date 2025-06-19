@@ -42,6 +42,12 @@ pub struct GameAssets {
 
     #[asset(path = "ui/building_grid.png")]
     pub building_grid: Handle<Image>,
+    #[asset(path = "ui/store_bar.png")]
+    pub store_bar: Handle<Image>,
+    #[asset(path = "ui/store_item_background.png")]
+    pub store_item_background: Handle<Image>,
+    #[asset(path = "ui/store_item_unaffordable_overlay.png")]
+    pub store_item_unaffordable_overlay: Handle<Image>,
 
     // --- MAP ---
     #[asset(path = "map/grass.png")]

@@ -10,7 +10,6 @@ const DEFAULT_FONT_SIZE: f32 = 25.0;
 const RESET_UNLOCK_TIME: f32 = 3.0;
 
 // if sounds, than some sliders?
-// restart
 // export/import save files?
 
 #[derive(Resource, Default)]

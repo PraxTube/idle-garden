@@ -8,7 +8,7 @@
     "size_on_grid": [1, 1]
   },
   "Raddish": {
-    "cost": 50,
+    "cost": 500000,
     "pps": 1,
     "ysort": 0,
     "gfx_offset": [0, 8],

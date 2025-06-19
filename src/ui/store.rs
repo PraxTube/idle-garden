@@ -1,5 +1,5 @@
 use bevy::{
-    color::palettes::css::{DARK_GRAY, GRAY, RED},
+    color::palettes::css::{DARK_GRAY, RED},
     prelude::*,
     text::FontSmoothing,
     ui::RelativeCursorPosition,
@@ -14,15 +14,11 @@ use crate::{
 use super::outline::TextOutline;
 
 const STORE_ROOT_PADDING_VERTICAL: f32 = 40.0;
-const STORE_ROOT_PADDING_HORIZONTAL: f32 = 150.0;
-const STORE_HEIGHT: f32 = 75.0;
-const HORIZONTAL_ITEM_PADDING: f32 = 30.0;
+const HORIZONTAL_ITEM_PADDING: f32 = 50.0;
 const NUMBER_OF_ITEMS_ON_PAGE: usize = 8;
 
 #[derive(Component)]
 struct StoreRoot;
-#[derive(Component)]
-struct StoreBackground;
 #[derive(Component)]
 struct StoreItemContainer;
 #[derive(Component)]
@@ -77,15 +73,14 @@ fn spawn_store_item(
             Button,
             item,
             Node {
-                height: Val::Percent(70.0),
+                height: Val::Percent(50.0),
                 aspect_ratio: Some(1.0),
                 align_self: AlignSelf::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
             },
             ImageNode {
-                color: GRAY.into(),
-                image: Handle::<Image>::default(),
+                image: assets.store_item_background.clone(),
                 ..default()
             },
         ))
@@ -95,8 +90,8 @@ fn spawn_store_item(
         ChildOf(item_root),
         ItemIcon,
         Node {
-            width: Val::Percent(80.0),
-            height: Val::Percent(80.0),
+            height: Val::Percent(60.0),
+            aspect_ratio: Some(1.0),
             align_self: AlignSelf::Center,
             position_type: PositionType::Absolute,
             ..default()
@@ -123,7 +118,7 @@ fn spawn_store_item(
             Color::BLACK,
             TextFont {
                 font: assets.pixel_font.clone(),
-                font_size: 20.0,
+                font_size: 25.0,
                 font_smoothing: FontSmoothing::None,
                 ..default()
             },
@@ -147,7 +142,7 @@ fn spawn_store_item(
             Color::BLACK,
             TextFont {
                 font: assets.pixel_font.clone(),
-                font_size: 20.0,
+                font_size: 25.0,
                 font_smoothing: FontSmoothing::None,
                 ..default()
             },
@@ -167,47 +162,43 @@ fn spawn_store_item(
         },
         Visibility::Hidden,
         ImageNode {
-            image: Handle::<Image>::default(),
-            color: Color::BLACK.with_alpha(0.5),
+            image: assets.store_item_unaffordable_overlay.clone(),
             ..default()
         },
         ZIndex(3),
     ));
 }
 
-fn spawn_store(mut commands: Commands, assets: Res<GameAssets>) {
+fn spawn_store(mut commands: Commands, assets: Res<GameAssets>, images: Res<Assets<Image>>) {
+    let store_bar_image = images
+        .get(&assets.store_bar)
+        .expect("failed to get store bar image");
+    let store_bar_image_size = store_bar_image.size();
+
+    let width = store_bar_image_size.x as f32;
+    let height = store_bar_image_size.y as f32;
+    let horizontal_padding = (DEFAULT_WINDOW_WIDTH - width) * 0.5;
+    debug_assert!(horizontal_padding > 0.0);
+
     let root = commands
         .spawn((
             StoreRoot,
+            RelativeCursorPosition::default(),
+            ImageNode {
+                image: assets.store_bar.clone(),
+                ..default()
+            },
             Node {
-                left: Val::Px(STORE_ROOT_PADDING_HORIZONTAL),
-                right: Val::Px(STORE_ROOT_PADDING_HORIZONTAL),
+                left: Val::Px(horizontal_padding),
+                right: Val::Px(horizontal_padding),
                 bottom: Val::Px(STORE_ROOT_PADDING_VERTICAL),
-                height: Val::Px(STORE_HEIGHT),
-                width: Val::Px(DEFAULT_WINDOW_WIDTH - 2.0 * STORE_ROOT_PADDING_HORIZONTAL),
+                width: Val::Px(width),
+                height: Val::Px(height),
                 position_type: PositionType::Absolute,
                 ..default()
             },
         ))
         .id();
-
-    commands.spawn((
-        ChildOf(root),
-        StoreBackground,
-        RelativeCursorPosition::default(),
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            position_type: PositionType::Absolute,
-            ..default()
-        },
-        ZIndex(-1),
-        ImageNode {
-            color: Color::WHITE,
-            image: Handle::<Image>::default(),
-            ..default()
-        },
-    ));
 
     let items_container = commands
         .spawn((
@@ -247,7 +238,7 @@ fn update_item_affordability(
 
 fn reset_all_highlights(mut q_items: Query<&mut ImageNode, With<StoreItem>>) {
     for mut image in &mut q_items {
-        image.color = GRAY.into();
+        image.color = Color::WHITE;
     }
 }
 
