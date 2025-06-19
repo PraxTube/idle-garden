@@ -190,7 +190,9 @@ impl MapData {
 
         for x in 0..MAP_SIZE {
             for y in 0..MAP_SIZE {
-                if self.grid_index(x, y) == EMPTY_CELL_VALUE {
+                if self.grid_index(x, y) == EMPTY_CELL_VALUE
+                    || self.grid_index(x, y) == PLAYER_BLOCKED_CELL_VALUE
+                {
                     continue;
                 }
 
