@@ -9,9 +9,6 @@ use crate::{player::GamingInput, GameAssets, GameState};
 const DEFAULT_FONT_SIZE: f32 = 25.0;
 const RESET_UNLOCK_TIME: f32 = 3.0;
 
-// if sounds, than some sliders?
-// export/import save files?
-
 #[derive(Resource, Default)]
 struct MenuNavigator {
     highlighted_item: Option<Entity>,
@@ -84,7 +81,7 @@ fn spawn_button(
         .id()
 }
 
-fn spawn_background(commands: &mut Commands) -> Entity {
+fn spawn_background(commands: &mut Commands, assets: &GameAssets) -> Entity {
     let root = commands
         .spawn((
             ZIndex(100),
@@ -101,6 +98,7 @@ fn spawn_background(commands: &mut Commands) -> Entity {
 
     commands.spawn((
         ChildOf(root),
+        ZIndex(-1),
         ImageNode {
             image: Handle::<Image>::default(),
             color: Color::BLACK.with_alpha(0.65),
@@ -117,13 +115,10 @@ fn spawn_background(commands: &mut Commands) -> Entity {
     commands.spawn((
         ChildOf(root),
         ImageNode {
-            image: Handle::<Image>::default(),
-            color: Color::BLACK,
+            image: assets.menu_background.clone(),
             ..default()
         },
         Node {
-            height: Val::Percent(70.0),
-            width: Val::Percent(30.0),
             position_type: PositionType::Absolute,
             ..default()
         },
@@ -176,7 +171,7 @@ fn spawn_buttons(commands: &mut Commands, font: Handle<Font>) -> Entity {
 }
 
 fn spawn_menu(mut commands: Commands, assets: Res<GameAssets>) {
-    let background = spawn_background(&mut commands);
+    let background = spawn_background(&mut commands, &assets);
     let button_container = spawn_buttons(&mut commands, assets.pixel_font.clone());
 
     commands
@@ -303,20 +298,17 @@ fn spawn_reset_pop_up(
         ))
         .id();
 
-    let width = Val::Percent(70.0);
+    let width = Val::Percent(65.0);
     let height = Val::Percent(60.0);
 
     commands.spawn((
         ChildOf(root),
         ZIndex(-1),
         ImageNode {
-            image: Handle::<Image>::default(),
-            color: Color::BLACK,
+            image: assets.reset_pop_up_background.clone(),
             ..default()
         },
         Node {
-            width,
-            height,
             position_type: PositionType::Absolute,
             ..default()
         },
@@ -342,7 +334,7 @@ fn spawn_reset_pop_up(
         .spawn((
             ChildOf(vertical_flexbox),
             Node {
-                width: Val::Percent(80.0),
+                width: Val::Percent(90.0),
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Px(30.0),
                 justify_content: JustifyContent::Center,
@@ -430,22 +422,32 @@ fn close_menu_and_trigger_continue_action(
     });
 }
 
+fn trigger_close_reset_pop_up_event(
+    gaming_input: Res<GamingInput>,
+    mut ev_menu_action: EventWriter<MenuActionEvent>,
+) {
+    let input = gaming_input.menu || gaming_input.cancel;
+
+    if input {
+        ev_menu_action.write(MenuActionEvent {
+            action: MenuAction::CancelReset,
+        });
+    }
+}
+
 fn despawn_reset_pop_up(
     mut commands: Commands,
-    gaming_input: Res<GamingInput>,
     q_reset_pop_up: Query<Entity, With<ResetPopUp>>,
     mut ev_menu_action: EventReader<MenuActionEvent>,
 ) {
-    let event = ev_menu_action
+    if !ev_menu_action
         .read()
-        .any(|ev| ev.action == MenuAction::CancelReset);
-    let input = gaming_input.menu || gaming_input.cancel;
-
-    let Ok(entity) = q_reset_pop_up.single() else {
+        .any(|ev| ev.action == MenuAction::CancelReset)
+    {
         return;
-    };
+    }
 
-    if input || event {
+    for entity in &q_reset_pop_up {
         commands.entity(entity).despawn();
     }
 }
@@ -526,22 +528,24 @@ fn set_buttons_inactive_on_reset_pop_up(
     }
 }
 
-fn set_buttons_active_on_reset_cancel(
+fn set_buttons_active_on_cancel_reset(
     mut commands: Commands,
     q_buttons: Query<(Entity, &MenuData)>,
     mut ev_menu_action: EventReader<MenuActionEvent>,
 ) {
-    if ev_menu_action
+    if !ev_menu_action
         .read()
         .any(|ev| ev.action == MenuAction::CancelReset)
     {
-        for (entity, menu_data) in &q_buttons {
-            match menu_data.action {
-                MenuAction::Reset | MenuAction::CancelReset => continue,
-                _ => {}
-            }
-            commands.entity(entity).remove::<NonInteractable>();
+        return;
+    }
+
+    for (entity, menu_data) in &q_buttons {
+        match menu_data.action {
+            MenuAction::Reset | MenuAction::CancelReset => continue,
+            _ => {}
         }
+        commands.entity(entity).remove::<NonInteractable>();
     }
 }
 
@@ -563,11 +567,12 @@ impl Plugin for UiMenuPlugin {
                     gray_out_items,
                     spawn_reset_pop_up,
                     close_menu_and_trigger_continue_action.run_if(in_state(GameState::Menu)),
+                    trigger_close_reset_pop_up_event,
                     despawn_reset_pop_up,
                     update_reset_pop_up_timer_text,
                     remove_reset_pop_up_timer_component,
                     remove_non_interactable_from_reset_button,
-                    set_buttons_active_on_reset_cancel,
+                    set_buttons_active_on_cancel_reset,
                     set_buttons_inactive_on_reset_pop_up,
                 )
                     .chain()
