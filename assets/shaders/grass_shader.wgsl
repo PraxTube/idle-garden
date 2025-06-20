@@ -3,44 +3,42 @@
     mesh2d_vertex_output::VertexOutput,
 }
 
+const AMPLITUDE: f32 = 18.0;
+const TIME_SCALE: f32 = 0.5;
+
 // vec2 is sufficient here, but we pad with 2 more f32 to have 16 byte aligned for WASM
-@group(2) @binding(0) var<uniform> texel_size: vec4<f32>;
+@group(2) @binding(0) var<uniform> texel_size_and_timestamps: vec4<f32>;
 @group(2) @binding(1) var texture: texture_2d<f32>;
 @group(2) @binding(2) var texture_sampler: sampler;
-@group(2) @binding(3) var noise_texture: texture_2d<f32>;
-@group(2) @binding(4) var noise_sampler: sampler;
-
-fn to_grayscale(c: vec3<f32>) -> f32 {
-    return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
-}
-
-fn from_grayscale(g: f32) -> vec3<f32> {
-    return vec3(g, g, g);
-}
+@group(2) @binding(3) var sine_texture: texture_2d<f32>;
+@group(2) @binding(4) var sine_sampler: sampler;
+@group(2) @binding(5) var exp_texture: texture_2d<f32>;
+@group(2) @binding(6) var exp_sampler: sampler;
 
 @fragment
 fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
-    let time_scale = 1.1;
-    let distortion = 2.0;
+    let texel_size = texel_size_and_timestamps.xy;
+    let sine_timestamp = texel_size_and_timestamps.z;
+    let exp_timestamp = texel_size_and_timestamps.w;
+    let snapped_mesh_uv = floor(mesh.uv / texel_size) * texel_size;
 
-    let snapped_mesh_uv = floor(mesh.uv / texel_size.xy + 0.5) * texel_size.xy;
+    let sine_t = fract((globals.time - sine_timestamp) * TIME_SCALE);
+    let raw_sine = textureSample(sine_texture, sine_sampler, vec2(sine_t, 0.0)).x;
+    let sine = (raw_sine - 0.5) * 2.0 * (1.0 - snapped_mesh_uv.y - texel_size.y);
 
-    let original_color = textureSample(texture, texture_sampler, snapped_mesh_uv);
+    let exp_t = (globals.time - exp_timestamp) * TIME_SCALE;
+    if exp_t > 1.0 {
+        return textureSample(texture, texture_sampler, mesh.uv);
+    }
+    let exp = textureSample(exp_texture, exp_sampler, vec2(exp_t, 0.0)).x;
 
-    let noise_color = textureSample(noise_texture, noise_sampler, fract(vec2(snapped_mesh_uv.y * 0.8, 0.0) + vec2(0.1, 0.1) * globals.time * time_scale));
-    let raw_noise_offset = to_grayscale(noise_color.rgb);
-    let noise_offset = (raw_noise_offset - 0.5) * original_color.r * distortion;
-    let snapped_offset = (floor(noise_offset / texel_size.xy + 0.5) * texel_size.xy);
+
+    let noise_offset = exp * AMPLITUDE * sine;
+    let snapped_offset = floor(noise_offset / texel_size) * texel_size;
     // We scale by the texel size so that the distortion isn't relative to the size,
     // this means that a 1 pixel shift is the same on a 16x16 texture just as it would be on a 120x120 texture.
-    let offset = snapped_offset * distortion * texel_size.xy;
+    let offset = snapped_offset * texel_size;
 
     let uv = fract(snapped_mesh_uv + vec2(offset.x, 0.0));
-
-    let color = textureSample(texture, texture_sampler, uv);
-    if color.g != 1.0 {
-        return vec4(0.0, 0.0, 0.0, 0.0);
-    }
-
-    return vec4(0.1, 0.8, 0.15, 1.0);
+    return textureSample(texture, texture_sampler, uv);
 }

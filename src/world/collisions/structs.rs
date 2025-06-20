@@ -32,6 +32,7 @@ pub struct StaticCollider {
 }
 
 #[derive(Component)]
+#[require(Transform)]
 pub struct StaticSensorAABB {
     pub half_x: f32,
     pub half_y: f32,
@@ -44,7 +45,7 @@ pub struct StaticSensorCircle {
     pub offset: Vec2,
 }
 
-#[derive(Component)]
+#[derive(Component, Clone, Copy, PartialEq)]
 pub struct CollisionGroups {
     pub memberships: u32,
     pub filters: u32,
@@ -78,7 +79,7 @@ impl CollisionGroups {
 
     /// Whether the current and the other CollisionGroups are on compatible layers and can interact
     /// (collision/intersections can occure).
-    pub fn interacts_with(&self, other: &Self) -> bool {
+    pub fn matches_with(&self, other: &Self) -> bool {
         self.memberships & other.filters != 0 && self.filters & other.memberships != 0
     }
 }

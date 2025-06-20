@@ -4,12 +4,11 @@ use super::{CollisionGroups, StaticSensorAABB, StaticSensorCircle};
 
 #[derive(Event)]
 pub struct IntersectionEvent {
-    #[allow(unused)]
-    circle: Entity,
-    pub aabb: Entity,
+    pub entities: (Entity, Entity),
+    pub collision_groups: (CollisionGroups, CollisionGroups),
 }
 
-fn relay_intersection_events(
+fn relay_intersection_events_aabb_circle(
     q_aabbs: Query<(Entity, &Transform, &CollisionGroups, &StaticSensorAABB)>,
     q_circles: Query<
         (Entity, &Transform, &CollisionGroups, &StaticSensorCircle),
@@ -19,13 +18,13 @@ fn relay_intersection_events(
 ) {
     for (entity_aabb, transform_aabb, groups_aabb, sensor_aabb) in &q_aabbs {
         for (entity_circle, transform_circle, groups_circle, sensor_circle) in &q_circles {
-            if !groups_aabb.interacts_with(groups_circle) {
+            if !groups_aabb.matches_with(groups_circle) {
                 continue;
             }
 
             let circle_center = transform_circle.translation.xy() + sensor_circle.offset;
             let aabb_center = transform_aabb.translation.xy();
-            let dis_sqrt = circle_center.distance_squared(transform_aabb.translation.xy());
+            let dis_sqrt = circle_center.distance_squared(aabb_center);
 
             if dis_sqrt > (sensor_aabb.outer_radius + sensor_circle.radius).powi(2) {
                 continue;
@@ -38,8 +37,8 @@ fn relay_intersection_events(
                 aabb_center,
             ) {
                 ev_intersection.write(IntersectionEvent {
-                    circle: entity_circle,
-                    aabb: entity_aabb,
+                    entities: (entity_circle, entity_aabb),
+                    collision_groups: (*groups_circle, *groups_aabb),
                 });
             }
         }
@@ -82,6 +81,6 @@ pub struct IntersectionPlugin;
 impl Plugin for IntersectionPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<IntersectionEvent>()
-            .add_systems(PreUpdate, relay_intersection_events);
+            .add_systems(PreUpdate, (relay_intersection_events_aabb_circle,).chain());
     }
 }

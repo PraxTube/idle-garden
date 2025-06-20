@@ -64,7 +64,7 @@ fn update_velocities_with_collision(
 
         let mut rects = Vec::new();
         for (rect_transform, rect, collision_groups) in &q_static_colliders {
-            if !collision_groups.interacts_with(circle_collision_groups) {
+            if !collision_groups.matches_with(circle_collision_groups) {
                 continue;
             }
 
@@ -79,7 +79,7 @@ fn update_velocities_with_collision(
             if collider_entity == actor_entity {
                 continue;
             }
-            if !collision_groups.interacts_with(circle_collision_groups) {
+            if !collision_groups.matches_with(circle_collision_groups) {
                 continue;
             }
 

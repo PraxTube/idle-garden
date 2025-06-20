@@ -78,6 +78,10 @@ pub struct GameAssets {
     // --- SHADERS ---
     #[asset(path = "shaders/noise_texture.png")]
     pub noise_texture: Handle<Image>,
+    #[asset(path = "shaders/discrete_sine.png")]
+    pub discrete_sine_texture: Handle<Image>,
+    #[asset(path = "shaders/discrete_exp_damp.png")]
+    pub discrete_exp_damp_texture: Handle<Image>,
 
     // --- FONTS ---
     #[asset(path = "fonts/PressStart2P.ttf")]

@@ -6,7 +6,10 @@ use bevy::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::assets::PLAYER_SAVE_FILE;
 use crate::{
-    world::{DynamicCollider, InitialFloraSpawned, Velocity, YSort, PLAYER_COLLISION_GROUPS},
+    world::{
+        DynamicCollider, InitialFloraSpawned, StaticSensorCircle, Velocity, YSort,
+        PLAYER_COLLISION_GROUPS,
+    },
     GameAssets,
 };
 
@@ -41,6 +44,7 @@ fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec
         PLAYER_COLLISION_GROUPS,
         Velocity::default(),
         DynamicCollider::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
+        StaticSensorCircle::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
         YSort(5.0),
         Sprite::from_image(assets.player.clone()),
         Transform::from_translation(pos.extend(0.0)),

@@ -7,10 +7,11 @@ use bevy::{
 
 use crate::{
     assets::GRASS_SHADER,
+    player::Player,
     ui::{MenuAction, MenuActionEvent},
     world::{
         collisions::{IntersectionEvent, StaticSensorAABB, GRASS_COLLISION_GROUPS},
-        ZLevel, TILE_SIZE,
+        DynamicCollider, Velocity, ZLevel, SLASH_COLLISION_GROUPS, TILE_SIZE,
     },
 };
 
@@ -38,13 +39,16 @@ pub struct CutTallGrass {
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct GrassMaterial {
     #[uniform(0)]
-    pub texel_size: Vec4,
+    pub texel_size_and_timestamps: Vec4,
     #[texture(1)]
     #[sampler(2)]
     pub texture: Option<Handle<Image>>,
     #[texture(3)]
     #[sampler(4)]
-    pub noise: Option<Handle<Image>>,
+    pub discrete_sine: Option<Handle<Image>>,
+    #[texture(5)]
+    #[sampler(6)]
+    pub discrete_exp_damp: Option<Handle<Image>>,
 }
 
 impl Default for NumberPopUp {
@@ -90,9 +94,10 @@ fn spawn_tall_grass(
         MeshMaterial2d(
             materials
                 .add(GrassMaterial {
-                    texel_size: (1.0 / image_size).extend(0.0).extend(0.0),
+                    texel_size_and_timestamps: (1.0 / image_size).extend(-10.0).extend(-10.0),
                     texture: Some(image_handle.clone()),
-                    noise: Some(assets.noise_texture.clone()),
+                    discrete_sine: Some(assets.discrete_sine_texture.clone()),
+                    discrete_exp_damp: Some(assets.discrete_exp_damp_texture.clone()),
                 })
                 .clone(),
         ),
@@ -160,11 +165,21 @@ fn trigger_cut_tall_grass_event(
     mut ev_cut_tall_grass: EventWriter<CutTallGrass>,
 ) {
     for ev in ev_intersection.read() {
-        let entity = ev.aabb;
-        let Ok(transform) = q_grass.get(entity) else {
+        let (entity, other_group) = if ev.collision_groups.0 == GRASS_COLLISION_GROUPS {
+            (ev.entities.0, ev.collision_groups.1)
+        } else if ev.collision_groups.1 == GRASS_COLLISION_GROUPS {
+            (ev.entities.1, ev.collision_groups.0)
+        } else {
             continue;
         };
 
+        if other_group != SLASH_COLLISION_GROUPS {
+            continue;
+        }
+
+        let Ok(transform) = q_grass.get(entity) else {
+            continue;
+        };
         ev_cut_tall_grass.write(CutTallGrass {
             entity,
             pos: transform.translation.xy(),
@@ -216,6 +231,41 @@ fn despawn_number_pop_ups(mut commands: Commands, q_pop_ups: Query<(Entity, &Num
     }
 }
 
+fn set_grass_timestamps(
+    time: Res<Time>,
+    mut materials: ResMut<Assets<GrassMaterial>>,
+    q_player: Query<(&Transform, &Velocity, &DynamicCollider), With<Player>>,
+    q_grass: Query<(&Transform, &MeshMaterial2d<GrassMaterial>), Without<Player>>,
+) {
+    let Ok((player_transform, player_velocity, player_collider)) = q_player.single() else {
+        return;
+    };
+
+    // We only want to set the timestamps when the player walks into or away from grass.
+    if player_velocity.0 == Vec2::ZERO {
+        return;
+    }
+
+    let player_pos = player_transform.translation.xy() + player_collider.offset;
+
+    for (grass_transform, material_handle) in &q_grass {
+        let grass_pos = grass_transform.translation.xy();
+
+        if player_pos.distance_squared(grass_pos) > (player_collider.radius + 15.0).powi(2) {
+            continue;
+        }
+
+        let Some(grass_material) = materials.get_mut(material_handle) else {
+            continue;
+        };
+
+        info!("OK");
+
+        grass_material.texel_size_and_timestamps.z = time.elapsed_secs();
+        grass_material.texel_size_and_timestamps.w = time.elapsed_secs();
+    }
+}
+
 pub struct MapGrassPlugin;
 
 impl Plugin for MapGrassPlugin {
@@ -241,6 +291,7 @@ impl Plugin for MapGrassPlugin {
                 )
                     .chain()
                     .before(ProgressionSystemSet),
-            );
+            )
+            .add_systems(PostUpdate, set_grass_timestamps);
     }
 }
