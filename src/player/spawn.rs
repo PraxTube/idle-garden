@@ -5,6 +5,8 @@ use bevy::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::assets::PLAYER_SAVE_FILE;
+#[cfg(target_arch = "wasm32")]
+use crate::assets::WASM_PLAYER_KEY_STORAGE;
 use crate::{
     world::{
         DynamicCollider, InitialFloraSpawned, StaticSensorCircle, Velocity, YSort,
@@ -53,8 +55,6 @@ fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec
 
 #[cfg(target_arch = "wasm32")]
 fn spawn_player_wasm(commands: &mut Commands, assets: &GameAssets) {
-    use crate::assets::WASM_PLAYER_KEY_STORAGE;
-
     use web_sys::window;
 
     let storage = window()

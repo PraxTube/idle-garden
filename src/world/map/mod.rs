@@ -8,16 +8,26 @@ mod grass;
 use std::fs::{self, read_to_string};
 use std::{collections::HashMap, time::Duration};
 
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
 pub use building::{Blueprint, BuildingSystemSet};
 pub use flora::{Flora, InitialFloraSpawned};
 
-use bevy::{prelude::*, time::common_conditions::on_timer};
+use bevy::{
+    prelude::*,
+    time::common_conditions::{on_real_timer, on_timer},
+};
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::assets::{MAP_DATA_FILE, PLAYER_SAVE_FILE, PROGRESSION_CORE_FILE};
+#[cfg(target_arch = "wasm32")]
+use crate::assets::{WASM_KEYS, WASM_MAP_DATA_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE};
+
 use flora::FloraData;
 use grass::CutTallGrass;
 use serde::{Deserialize, Serialize};
 
-#[cfg(not(target_arch = "wasm32"))]
-use crate::assets::{MAP_DATA_FILE, PLAYER_SAVE_FILE, PROGRESSION_CORE_FILE};
 use crate::{
     assets::FLORA_DATA_CORE,
     player::{GamingInput, Player},
@@ -62,7 +72,7 @@ impl Plugin for MapPlugin {
                 update_points_per_second,
                 add_points.run_if(on_timer(Duration::from_secs(1))),
                 reset_game_state,
-                save_game_state,
+                save_game_state.run_if(on_real_timer(Duration::from_secs(20))),
             )
                 .chain()
                 .in_set(ProgressionSystemSet)
@@ -71,6 +81,12 @@ impl Plugin for MapPlugin {
 
         // #[cfg(target_arch = "wasm32")]
         // app.add_systems(Startup, hard_reset);
+
+        #[cfg(target_arch = "wasm32")]
+        app.add_systems(
+            Update,
+            sync_state_to_js.run_if(on_real_timer(Duration::from_secs(1))),
+        );
     }
 }
 
@@ -313,8 +329,6 @@ impl ZLevel {
 
 #[cfg(target_arch = "wasm32")]
 fn insert_map_data_wasm(commands: &mut Commands) {
-    use crate::assets::WASM_MAP_DATA_KEY_STORAGE;
-
     use web_sys::window;
 
     let storage = window()
@@ -351,8 +365,6 @@ fn insert_map_data_resource(mut commands: Commands) {
 
 #[cfg(target_arch = "wasm32")]
 fn insert_progression_core_wasm(commands: &mut Commands) {
-    use crate::assets::WASM_PROGRESSION_CORE_KEY_STORAGE;
-
     use web_sys::window;
 
     let storage = window()
@@ -395,20 +407,8 @@ fn insert_progression_core(mut commands: Commands) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn save_game_state_wasm(
-    core: &ProgressionCore,
-    map_data: &MapData,
-    q_player: &Query<&Transform, With<Player>>,
-) {
-    use crate::assets::{
-        WASM_MAP_DATA_KEY_STORAGE, WASM_PLAYER_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE,
-    };
-
+fn save_game_state_wasm(keys: &[&str; 3], data: &[String; 3]) {
     use web_sys::window;
-
-    let Ok(player_transform) = q_player.single() else {
-        return;
-    };
 
     let storage = window()
         .expect("failed to get window")
@@ -416,52 +416,66 @@ fn save_game_state_wasm(
         .expect("failed to get local storage")
         .expect("failed to unwrap local storage");
 
-    storage
-        .set_item(
-            WASM_PLAYER_KEY_STORAGE,
-            &format!(
-                "{},{}",
-                player_transform.translation.x, player_transform.translation.y
-            ),
-        )
-        .expect("failed to set local storage for player");
+    for i in 0..keys.len() {
+        let err_msg = format!(
+            "failed to store to local storage, key: {}, data: {}",
+            keys[i], &data[i]
+        );
 
-    storage
-        .set_item(WASM_MAP_DATA_KEY_STORAGE, &map_data.to_string())
-        .expect("failed to set local storage progression core");
-
-    storage
-        .set_item(
-            WASM_PROGRESSION_CORE_KEY_STORAGE,
-            &serde_json::to_string(&*core).expect("failed to serialize progression core"),
-        )
-        .expect("failed to set local storage progression core");
+        storage.set_item(keys[i], &data[i]).expect(&err_msg);
+    }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn save_game_state_native(
-    core: &ProgressionCore,
-    map_data: &MapData,
-    q_player: &Query<&Transform, With<Player>>,
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = window)]
+    fn buffer_game_state(json: &str);
+}
+
+#[cfg(target_arch = "wasm32")]
+fn sync_state_to_js(
+    core: Res<ProgressionCore>,
+    map_data: Res<MapData>,
+    q_player: Query<&Transform, With<Player>>,
 ) {
     let Ok(player_transform) = q_player.single() else {
         return;
     };
 
-    fs::write(
-        PROGRESSION_CORE_FILE,
-        &serde_json::to_string(core).expect("failed to serialize progression core"),
-    )
-    .expect("failed to write progression core to file");
-    fs::write(MAP_DATA_FILE, map_data.to_string()).expect("failed to write to map data file");
-    fs::write(
-        PLAYER_SAVE_FILE,
-        &format!(
+    let data = package_save_data(&core, &map_data, &player_transform);
+    let save_data: HashMap<&&str, &String> = WASM_KEYS.iter().zip(data.iter()).collect();
+
+    buffer_game_state(
+        &serde_json::to_string(&save_data).expect("failed to parse hashmap save data to json"),
+    );
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save_game_state_native(files: &[&str; 3], data: &[String; 3]) {
+    for i in 0..files.len() {
+        let err_msg = format!(
+            "failed to write data to file, file: {}, data: {}",
+            files[i], data[i]
+        );
+
+        fs::write(files[i], &data[i]).expect(&err_msg);
+    }
+}
+
+fn package_save_data(
+    core: &ProgressionCore,
+    map_data: &MapData,
+    player_transform: &Transform,
+) -> [String; 3] {
+    [
+        serde_json::to_string(core).expect("failed to serialize progression core"),
+        map_data.to_string(),
+        format!(
             "{},{}",
             player_transform.translation.x, player_transform.translation.y
         ),
-    )
-    .expect("faield to write player save file");
+    ]
 }
 
 // TODO: Make saving periodic, right now you are saving EVERY FRAME
@@ -470,11 +484,19 @@ fn save_game_state(
     map_data: Res<MapData>,
     q_player: Query<&Transform, With<Player>>,
 ) {
+    let Ok(player_transform) = q_player.single() else {
+        return;
+    };
+
+    let data = package_save_data(&core, &map_data, &player_transform);
+
     #[cfg(target_arch = "wasm32")]
-    save_game_state_wasm(&core, &map_data, &q_player);
+    save_game_state_wasm(&WASM_KEYS, &data);
 
     #[cfg(not(target_arch = "wasm32"))]
-    save_game_state_native(&core, &map_data, &q_player);
+    const FILES: [&str; 3] = [PROGRESSION_CORE_FILE, MAP_DATA_FILE, PLAYER_SAVE_FILE];
+    #[cfg(not(target_arch = "wasm32"))]
+    save_game_state_native(&FILES, &data);
 }
 
 #[cfg(target_arch = "wasm32")]

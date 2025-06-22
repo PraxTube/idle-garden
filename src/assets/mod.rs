@@ -18,6 +18,12 @@ pub const WASM_MAP_DATA_KEY_STORAGE: &str = "map-grid";
 pub const WASM_PROGRESSION_CORE_KEY_STORAGE: &str = "progression-core";
 #[cfg(target_arch = "wasm32")]
 pub const WASM_PLAYER_KEY_STORAGE: &str = "player";
+#[cfg(target_arch = "wasm32")]
+pub const WASM_KEYS: [&str; 3] = [
+    WASM_PROGRESSION_CORE_KEY_STORAGE,
+    WASM_MAP_DATA_KEY_STORAGE,
+    WASM_PLAYER_KEY_STORAGE,
+];
 
 #[derive(AssetCollection, Resource)]
 pub struct GameAssets {
