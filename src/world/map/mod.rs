@@ -82,6 +82,14 @@ impl Plugin for MapPlugin {
         // #[cfg(target_arch = "wasm32")]
         // app.add_systems(Startup, hard_reset);
 
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_systems(
+            PostUpdate,
+            save_game_state.run_if(
+                resource_exists::<MapData>
+                    .and(resource_exists::<ProgressionCore>.and(on_event::<AppExit>)),
+            ),
+        );
         #[cfg(target_arch = "wasm32")]
         app.add_systems(
             Update,
@@ -478,7 +486,6 @@ fn package_save_data(
     ]
 }
 
-// TODO: Make saving periodic, right now you are saving EVERY FRAME
 fn save_game_state(
     core: Res<ProgressionCore>,
     map_data: Res<MapData>,
