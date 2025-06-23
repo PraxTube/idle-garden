@@ -15,7 +15,7 @@ pub fn visualize_colliders(
         Without<StaticCollider>,
     >,
 ) {
-    if !debug_state.active {
+    if !debug_state.active || !debug_state.collision_debug_active {
         return;
     }
 
@@ -55,7 +55,7 @@ pub fn visualize_sensors(
         Without<StaticSensorAABB>,
     >,
 ) {
-    if !debug_state.active {
+    if !debug_state.active || !debug_state.collision_debug_active {
         return;
     }
 

@@ -1,32 +1,17 @@
-use bevy::{
-    color::palettes::css::{PURPLE, WHITE},
-    prelude::*,
-    text::FontSmoothing,
-};
+use bevy::{color::palettes::css::RED, prelude::*, text::FontSmoothing};
 
 use crate::{
-    player::{GamingInput, Player},
+    player::Player,
     world::{DebugState, TILE_SIZE},
     GameAssets,
 };
 
-use super::{MapData, ZLevel, EMPTY_CELL_VALUE};
+use super::{MapData, ZLevel, EMPTY_CELL_VALUE, PLAYER_BLOCKED_CELL_VALUE, TALL_GRASS_CELL_VALUE};
 
 const DEBUG_GRID_SIZE: usize = 50;
 
 #[derive(Component)]
 struct GridDebugVisual;
-
-fn toggle_grid_debug(mut debug_state: ResMut<DebugState>, gaming_input: Res<GamingInput>) {
-    if !debug_state.active {
-        return;
-    }
-    if !gaming_input.toggle_debug_grid {
-        return;
-    }
-
-    debug_state.grid_debug_active = !debug_state.grid_debug_active;
-}
 
 fn spawn_grid_debug_visuals(
     mut commands: Commands,
@@ -54,34 +39,36 @@ fn spawn_grid_debug_visuals(
                 continue;
             }
 
-            if map_data.grid_index(x, y) == EMPTY_CELL_VALUE {
-                continue;
-            }
+            let index = map_data.grid_index(x, y);
+            let (text, color) = if index == EMPTY_CELL_VALUE {
+                ("E".to_string(), Color::WHITE.with_alpha(0.5))
+            } else if index == TALL_GRASS_CELL_VALUE {
+                ("G".to_string(), Color::WHITE.with_alpha(0.75))
+            } else if index == PLAYER_BLOCKED_CELL_VALUE {
+                ("P".to_string(), RED.into())
+            } else {
+                (format!("{:X}", index), Color::WHITE)
+            };
 
             let pos = map_data.grid_indices_to_pos(x, y);
-
-            let mut text = format!("{:X}", map_data.grid_index(x, y));
-            if text.chars().count() > 2 {
-                text.insert(2, '\n');
-            }
-
             commands.spawn((
                 GridDebugVisual,
                 Text2d::new(text),
                 TextFont {
                     font: assets.pixel_font.clone(),
-                    font_size: 6.0,
+                    font_size: 120.0,
                     font_smoothing: FontSmoothing::None,
                     ..default()
                 },
-                TextColor(WHITE.into()),
-                Transform::from_xyz(pos.x, pos.y, ZLevel::TopUi.value()),
+                TextColor(color),
+                Transform::from_xyz(pos.x, pos.y, ZLevel::TopUi.value())
+                    .with_scale(Vec3::splat(0.1)),
             ));
 
             commands.spawn((
                 GridDebugVisual,
                 Sprite {
-                    color: PURPLE.with_alpha(0.35).into(),
+                    color: Color::BLACK.with_alpha(0.5),
                     custom_size: Some(Vec2::splat(TILE_SIZE)),
                     ..default()
                 },
@@ -107,7 +94,6 @@ impl Plugin for MapDebugPlugin {
         app.add_systems(
             PostUpdate,
             (
-                toggle_grid_debug,
                 despawn_grid_debug_visuals,
                 spawn_grid_debug_visuals.run_if(resource_exists::<GameAssets>),
             )

@@ -52,6 +52,7 @@ fn handle_keyboard_inputs(
 
     input.toggle_debug = keys.just_pressed(KeyCode::F3);
     input.toggle_debug_grid = keys.just_pressed(KeyCode::KeyG);
+    input.toggle_debug_collision = keys.just_pressed(KeyCode::KeyL);
 
     input.confirm = mouse_buttons.just_pressed(MouseButton::Left);
     input.cancel =

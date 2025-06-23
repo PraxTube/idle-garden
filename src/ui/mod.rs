@@ -1,4 +1,5 @@
 mod auto_save_icon;
+mod debug;
 mod menu;
 mod outline;
 mod stats;
@@ -16,6 +17,7 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
+            debug::UiDebugPlugin,
             outline::UiOutlinePlugin,
             auto_save_icon::UiAutoSaveIconPlugin,
             stats::UiStatsPlugin,
