@@ -78,8 +78,14 @@ pub struct GameAssets {
     )]
     pub flora_images: Vec<Handle<Image>>,
 
-    #[asset(path = "map/pine-tree.png")]
-    pub pine_tree: Handle<Image>,
+    #[asset(path = "map/fence_top_corner.png")]
+    pub fence_top_corner: Handle<Image>,
+    #[asset(path = "map/fence_bottom_corner.png")]
+    pub fence_bottom_corner: Handle<Image>,
+    #[asset(path = "map/fence_vertical.png")]
+    pub fence_vertical: Handle<Image>,
+    #[asset(path = "map/fence_horizontal.png")]
+    pub fence_horizontal: Handle<Image>,
 
     // --- SHADERS ---
     #[asset(path = "shaders/noise_texture.png")]

@@ -10,6 +10,21 @@ use crate::{
 
 use super::{MapData, MAP_SIZE};
 
+fn map_indices_to_asset(assets: &GameAssets, x: usize, y: usize) -> (Handle<Image>, bool) {
+    if y == 0 && (x == 0 || x == MAP_SIZE + 1) {
+        return (assets.fence_bottom_corner.clone(), x == 0);
+    } else if y == MAP_SIZE + 1 && (x == 0 || x == MAP_SIZE + 1) {
+        return (assets.fence_top_corner.clone(), x == 0);
+    } else if x == 0 || x == MAP_SIZE + 1 {
+        return (assets.fence_vertical.clone(), x == 0);
+    } else if y == 0 || y == MAP_SIZE + 1 {
+        return (assets.fence_horizontal.clone(), false);
+    }
+
+    error!("incorrect mapping of fence! Must never happen");
+    (assets.fence_horizontal.clone(), true)
+}
+
 fn spawn_map_border(mut commands: Commands) {
     let size = MAP_SIZE as f32 * TILE_SIZE;
 
@@ -47,33 +62,40 @@ fn spawn_map_border(mut commands: Commands) {
     }
 }
 
-fn spawn_trees(mut commands: Commands, assets: Res<GameAssets>, map_data: Res<MapData>) {
-    let min = map_data.grid_indices_to_pos(0, 0) - Vec2::ONE * TILE_SIZE;
-    let max = map_data.grid_indices_to_pos(MAP_SIZE - 1, MAP_SIZE - 1) + Vec2::ONE * TILE_SIZE;
+fn spawn_fence(commands: &mut Commands, assets: &GameAssets, pos: Vec2, x: usize, y: usize) {
+    let (image, flip_x) = map_indices_to_asset(assets, x, y);
+    commands.spawn((
+        Sprite {
+            image,
+            flip_x,
+            ..default()
+        },
+        Transform::from_translation(pos.extend(0.0)),
+        YSort(0.0),
+    ));
+}
 
-    let mut positions = Vec::new();
+fn spawn_fences(mut commands: Commands, assets: Res<GameAssets>, map_data: Res<MapData>) {
+    let offset = Vec2::ONE * TILE_SIZE;
+
     for x in 0..MAP_SIZE + 2 {
-        for y in [min.y, max.y] {
-            let x = min.x + x as f32 * TILE_SIZE;
-            debug_assert!(x <= max.x);
-            positions.push(Vec2::new(x, y));
+        for y in [0, MAP_SIZE + 1] {
+            let pos = map_data.grid_indices_to_pos(x, y) - offset;
+            spawn_fence(&mut commands, &assets, pos, x, y);
+            // let x = min.x + x as f32 * TILE_SIZE;
+            // debug_assert!(x <= max.x);
+            // positions.push(Vec2::new(x, y));
         }
     }
 
-    for x in [min.x, max.x] {
+    for x in [0, MAP_SIZE + 1] {
         for y in 0..MAP_SIZE + 2 {
-            let y = min.y + y as f32 * TILE_SIZE;
-            debug_assert!(y <= max.y);
-            positions.push(Vec2::new(x, y));
+            let pos = map_data.grid_indices_to_pos(x, y) - offset;
+            spawn_fence(&mut commands, &assets, pos, x, y);
+            // let y = min.y + y as f32 * TILE_SIZE;
+            // debug_assert!(y <= max.y);
+            // positions.push(Vec2::new(x, y));
         }
-    }
-
-    for pos in positions {
-        commands.spawn((
-            Sprite::from_image(assets.pine_tree.clone()),
-            Transform::from_translation(pos.extend(0.0)),
-            YSort(0.0),
-        ));
     }
 }
 
@@ -84,7 +106,7 @@ impl Plugin for MapBorderPlugin {
         app.add_systems(OnExit(GameState::AssetLoading), spawn_map_border)
             .add_systems(
                 Update,
-                spawn_trees.run_if(
+                spawn_fences.run_if(
                     resource_exists::<GameAssets>.and(resource_exists::<MapData>.and(run_once)),
                 ),
             );
