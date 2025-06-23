@@ -22,6 +22,11 @@ use super::{
     TALL_GRASS_CELL_VALUE,
 };
 
+// Should match the exp damp time scale used in the grass shader.
+// The sine time will only be reset when the exp damp is at zero,
+// in other words when the grass is not moving through player shake.
+const TIME_TILL_SINE_RESET: f32 = 1.5;
+
 #[derive(Component)]
 struct TallGrass;
 #[derive(Component)]
@@ -259,10 +264,21 @@ fn set_grass_timestamps(
             continue;
         };
 
-        info!("OK");
+        let current_time = time.elapsed_secs();
+        let time_diff = current_time - grass_material.texel_size_and_timestamps.w;
+        debug_assert!(time_diff > 0.0);
 
-        grass_material.texel_size_and_timestamps.z = time.elapsed_secs();
-        grass_material.texel_size_and_timestamps.w = time.elapsed_secs();
+        // Set exp damp timestamp
+        grass_material.texel_size_and_timestamps.w = current_time;
+
+        // Set sine timestamp
+        if time_diff > TIME_TILL_SINE_RESET {
+            if player_pos.x < grass_pos.x {
+                grass_material.texel_size_and_timestamps.z = -current_time;
+            } else {
+                grass_material.texel_size_and_timestamps.z = current_time;
+            }
+        }
     }
 }
 

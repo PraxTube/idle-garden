@@ -28,7 +28,6 @@ fn noise_worley(v: vec2<f32>, angle: f32) -> f32 {
     let s = sin(angle);
     let c = cos(angle);
 
-
     var ox = fract(p * k) - ko;
     var oy = (floor(p * k) % 7.0) * k - ko;
     var rot_ox = c * ox - s * oy;
