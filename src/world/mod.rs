@@ -12,7 +12,7 @@ pub use collisions::{
 };
 pub use debug::DebugState;
 pub use map::{
-    Blueprint, BuildingSystemSet, Flora, InitialFloraSpawned, MapData, ProgressionCore,
+    AutoSave, Blueprint, BuildingSystemSet, Flora, InitialFloraSpawned, MapData, ProgressionCore,
     ProgressionSystemSet, ZLevel,
 };
 

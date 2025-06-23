@@ -1,3 +1,4 @@
+mod auto_save_icon;
 mod menu;
 mod outline;
 mod stats;
@@ -16,6 +17,7 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             outline::UiOutlinePlugin,
+            auto_save_icon::UiAutoSaveIconPlugin,
             stats::UiStatsPlugin,
             store::UiStorePlugin,
             menu::UiMenuPlugin,

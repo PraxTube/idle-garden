@@ -56,9 +56,14 @@ impl Plugin for MapPlugin {
             grass::MapGrassPlugin,
         ))
         .add_event::<ItemBought>()
+        .add_event::<AutoSave>()
         .add_systems(
             OnExit(GameState::AssetLoading),
             (insert_progression_core, insert_map_data_resource),
+        )
+        .add_systems(
+            PreUpdate,
+            trigger_auto_save.run_if(on_real_timer(Duration::from_secs(20))),
         )
         .add_systems(
             Update,
@@ -72,7 +77,7 @@ impl Plugin for MapPlugin {
                 update_points_per_second,
                 add_points.run_if(on_timer(Duration::from_secs(1))),
                 reset_game_state,
-                save_game_state.run_if(on_real_timer(Duration::from_secs(20))),
+                save_game_state.run_if(on_event::<AutoSave>),
             )
                 .chain()
                 .in_set(ProgressionSystemSet)
@@ -130,6 +135,9 @@ pub struct ItemBought {
     pos: Vec2,
     item: Flora,
 }
+
+#[derive(Event)]
+pub struct AutoSave;
 
 impl ProgressionCore {
     fn empty() -> Self {
@@ -484,6 +492,10 @@ fn package_save_data(
             player_transform.translation.x, player_transform.translation.y
         ),
     ]
+}
+
+fn trigger_auto_save(mut ev_auto_save: EventWriter<AutoSave>) {
+    ev_auto_save.write(AutoSave);
 }
 
 fn save_game_state(
