@@ -4,6 +4,7 @@ use bevy_asset_loader::prelude::*;
 pub const FLORA_DATA_CORE: &str = include_str!("../../assets/progression/flora.json");
 pub const FLORA_SHADER: &str = "shaders/flora_shader.wgsl";
 pub const GRASS_SHADER: &str = "shaders/grass_shader.wgsl";
+pub const CLOUDS_SHADER: &str = "shaders/clouds_shader.wgsl";
 
 #[cfg(not(target_arch = "wasm32"))]
 pub const MAP_DATA_FILE: &str = "assets/save/map_data";
@@ -88,12 +89,18 @@ pub struct GameAssets {
     pub fence_horizontal: Handle<Image>,
 
     // --- SHADERS ---
-    #[asset(path = "shaders/noise_texture.png")]
-    pub noise_texture: Handle<Image>,
     #[asset(path = "shaders/discrete_sine.png")]
     pub discrete_sine_texture: Handle<Image>,
     #[asset(path = "shaders/discrete_exp_damp.png")]
     pub discrete_exp_damp_texture: Handle<Image>,
+    #[asset(path = "shaders/primary_clouds_noise.png")]
+    pub primary_clouds_noise_texture: Handle<Image>,
+    #[asset(path = "shaders/secondary_clouds_noise.png")]
+    pub secondary_clouds_noise_texture: Handle<Image>,
+    #[asset(path = "shaders/tertiary_clouds_noise.png")]
+    pub tertiary_clouds_noise_texture: Handle<Image>,
+    #[asset(path = "shaders/quaternary_clouds_noise.png")]
+    pub quaternary_clouds_noise_texture: Handle<Image>,
 
     // --- FONTS ---
     #[asset(path = "fonts/PressStart2P.ttf")]

@@ -1,5 +1,6 @@
 mod border;
 mod building;
+mod clouds;
 mod debug;
 mod flora;
 mod grass;
@@ -49,10 +50,11 @@ pub struct MapPlugin;
 impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            flora::MapFloraPlugin,
             debug::MapDebugPlugin,
-            building::MapBuildingPlugin,
             border::MapBorderPlugin,
+            building::MapBuildingPlugin,
+            clouds::CloudsPlugin,
+            flora::MapFloraPlugin,
             grass::MapGrassPlugin,
         ))
         .add_event::<ItemBought>()

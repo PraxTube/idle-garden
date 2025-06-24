@@ -95,6 +95,7 @@ fn spawn_tall_grass(
         TallGrass,
         Transform::from_translation(pos.extend(ZLevel::Floor.value()))
             .with_scale(image_size.extend(1.0)),
+        // TODO: Spawn once and set to handle
         Mesh2d(meshes.add(Rectangle::default())),
         MeshMaterial2d(
             materials
