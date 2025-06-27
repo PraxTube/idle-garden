@@ -65,7 +65,25 @@ impl Plugin for MapPlugin {
         )
         .add_systems(
             PreUpdate,
-            trigger_auto_save.run_if(on_real_timer(Duration::from_secs(20))),
+            (
+                add_offline_progression.run_if(
+                    resource_exists::<ProgressionCore>
+                        .and(resource_exists::<MapData>)
+                        .and(run_once),
+                ),
+                // We also check if MapData exists (even though we don't need it in the system
+                // itself). The reason for that is because we need the MapData for the calculation
+                // of how much idle progress we made during the timestamp diff.
+                // And we can't have this system run before we calculate it because it will
+                // obviuosly get overwritten otherwise.
+                update_progression_core_timestamp.run_if(
+                    resource_exists::<ProgressionCore>
+                        .and(resource_exists::<MapData>)
+                        .and(on_real_timer(Duration::from_secs(1))),
+                ),
+                trigger_auto_save.run_if(on_real_timer(Duration::from_secs(20))),
+            )
+                .chain(),
         )
         .add_systems(
             Update,
@@ -85,9 +103,6 @@ impl Plugin for MapPlugin {
                 .in_set(ProgressionSystemSet)
                 .run_if(resource_exists::<MapData>.and(resource_exists::<ProgressionCore>)),
         );
-
-        // #[cfg(target_arch = "wasm32")]
-        // app.add_systems(Startup, hard_reset);
 
         #[cfg(not(target_arch = "wasm32"))]
         app.add_systems(
@@ -113,6 +128,13 @@ pub struct ProgressionSystemSet;
 #[derive(Resource, Serialize, Deserialize)]
 pub struct ProgressionCore {
     previous_timestamp: u64,
+    /// We store the points generate while offline in here.
+    /// This is also used as a flag, if there was progress done offline,
+    /// meaning this value is >0, than we spawn a number pop up indicating that
+    /// and than reset this value back to 0.
+    ///
+    /// Don't use this value for anything else.
+    offline_progression: u64,
     pub points: u64,
     pub pps: u32,
     pub flora: Vec<u16>,
@@ -147,6 +169,7 @@ impl ProgressionCore {
     fn empty() -> Self {
         Self {
             previous_timestamp: 0,
+            offline_progression: 0,
             points: 0,
             pps: 0,
             flora: vec![0; Flora::len()],
@@ -522,18 +545,6 @@ fn save_game_state(
     save_game_state_native(&FILES, &data);
 }
 
-#[cfg(target_arch = "wasm32")]
-fn hard_reset() {
-    use web_sys::window;
-
-    let storage = window()
-        .expect("failed to get window")
-        .local_storage()
-        .expect("failed to get local storage")
-        .expect("failed to unwrap local storage");
-    storage.clear().expect("failed to clear WASM local storage");
-}
-
 fn reset_game_state(
     mut core: ResMut<ProgressionCore>,
     mut map_data: ResMut<MapData>,
@@ -550,7 +561,7 @@ fn reset_game_state(
     *map_data = MapData::empty();
 }
 
-fn update_points_per_second(mut core: ResMut<ProgressionCore>, map_data: Res<MapData>) {
+fn compute_current_pps(core: &ProgressionCore, map_data: &MapData) -> u32 {
     let mut pps = 0;
     for i in 0..core.flora.len() {
         if core.flora[i] == 0 {
@@ -559,7 +570,11 @@ fn update_points_per_second(mut core: ResMut<ProgressionCore>, map_data: Res<Map
 
         pps += core.flora[i] as u32 * map_data.flora_data(i).pps;
     }
+    pps
+}
 
+fn update_points_per_second(mut core: ResMut<ProgressionCore>, map_data: Res<MapData>) {
+    let pps = compute_current_pps(&core, &map_data);
     core.pps = pps;
 }
 
@@ -696,6 +711,52 @@ fn increase_points_on_cut_tall_grass(
     for _ in ev_cut_tall_grass.read() {
         core.points += CUT_TALL_GRASS_POINTS;
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn timestamp_native() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let duration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards, have you alterated the system time?");
+    duration.as_secs()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn timestamp_wasm() -> u64 {
+    use js_sys::Date;
+    (Date::now() * 0.001) as u64
+}
+
+fn update_progression_core_timestamp(mut core: ResMut<ProgressionCore>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    let timestamp = timestamp_native();
+
+    #[cfg(target_arch = "wasm32")]
+    let timestamp = timestamp_wasm();
+
+    core.previous_timestamp = timestamp;
+}
+
+fn add_offline_progression(mut core: ResMut<ProgressionCore>, map_data: Res<MapData>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    let timestamp = timestamp_native();
+
+    #[cfg(target_arch = "wasm32")]
+    let timestamp = timestamp_wasm();
+
+    debug_assert!(timestamp > core.previous_timestamp);
+
+    if core.previous_timestamp > timestamp {
+        error!("The previous timestamp is greater than the current timestamp, did you alter the systems time?");
+        return;
+    }
+
+    let diff = timestamp - core.previous_timestamp;
+    let pps = compute_current_pps(&core, &map_data) as u64;
+    let new_points = pps * diff;
+    core.points += new_points;
+    core.offline_progression = new_points;
 }
 
 #[test]

@@ -13,19 +13,21 @@ use crate::{
         collisions::{IntersectionEvent, StaticSensorAABB, GRASS_COLLISION_GROUPS},
         DynamicCollider, Velocity, ZLevel, SLASH_COLLISION_GROUPS, TILE_SIZE,
     },
+    GameState,
 };
 
 use crate::GameAssets;
 
 use super::{
-    flora::InitialFloraSpawned, MapData, ProgressionSystemSet, CUT_TALL_GRASS_POINTS, MAP_SIZE,
-    TALL_GRASS_CELL_VALUE,
+    flora::InitialFloraSpawned, MapData, ProgressionCore, ProgressionSystemSet,
+    CUT_TALL_GRASS_POINTS, MAP_SIZE, TALL_GRASS_CELL_VALUE,
 };
 
 // Should match the exp damp time scale used in the grass shader.
 // The sine time will only be reset when the exp damp is at zero,
 // in other words when the grass is not moving through player shake.
 const TIME_TILL_SINE_RESET: f32 = 1.5;
+const OFFLINE_PROGRESSION_NUMBER_POP_UP_OFFSET: Vec2 = Vec2::new(0.0, 20.0);
 
 #[derive(Component)]
 struct TallGrass;
@@ -193,10 +195,10 @@ fn trigger_cut_tall_grass_event(
     }
 }
 
-fn spawn_number_pop_up(commands: &mut Commands, assets: &GameAssets, pos: Vec2) {
+fn spawn_number_pop_up(commands: &mut Commands, assets: &GameAssets, pos: Vec2, text: String) {
     commands.spawn((
         NumberPopUp::default(),
-        Text2d(format!("+{}", CUT_TALL_GRASS_POINTS)),
+        Text2d(text),
         TextFont {
             font: assets.pixel_font.clone(),
             font_size: 80.0,
@@ -214,8 +216,38 @@ fn spawn_number_pop_ups(
     mut ev_cut_tall_grass: EventReader<CutTallGrass>,
 ) {
     for ev in ev_cut_tall_grass.read() {
-        spawn_number_pop_up(&mut commands, &assets, ev.pos);
+        spawn_number_pop_up(
+            &mut commands,
+            &assets,
+            ev.pos,
+            format!("+{}", CUT_TALL_GRASS_POINTS),
+        );
     }
+}
+
+/// We spawn the offline progress number pop up in here because it's convenient.
+/// It's not clean at all, but I don't care, it's easy to do right now.
+fn spawn_offline_progress_number_pop_up(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    mut core: ResMut<ProgressionCore>,
+    q_player: Query<&Transform, With<Player>>,
+) {
+    if core.offline_progression == 0 {
+        return;
+    }
+
+    let Ok(player_transform) = q_player.single() else {
+        return;
+    };
+
+    spawn_number_pop_up(
+        &mut commands,
+        &assets,
+        player_transform.translation.xy() + OFFLINE_PROGRESSION_NUMBER_POP_UP_OFFSET,
+        format!("+{}", core.offline_progression),
+    );
+    core.offline_progression = 0;
 }
 
 fn animate_number_pop_ups(
@@ -303,6 +335,7 @@ impl Plugin for MapGrassPlugin {
                     trigger_cut_tall_grass_event,
                     despawn_tall_grass,
                     spawn_number_pop_ups.run_if(resource_exists::<GameAssets>),
+                    spawn_offline_progress_number_pop_up.run_if(in_state(GameState::Gaming)),
                     animate_number_pop_ups,
                     despawn_number_pop_ups,
                 )
