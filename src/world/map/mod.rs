@@ -100,7 +100,9 @@ impl Plugin for MapPlugin {
         #[cfg(target_arch = "wasm32")]
         app.add_systems(
             Update,
-            sync_state_to_js.run_if(on_real_timer(Duration::from_secs(1))),
+            sync_state_to_js.run_if(resource_exists::<MapData>.and(
+                resource_exists::<ProgressionCore>.and(on_real_timer(Duration::from_secs(1))),
+            )),
         );
     }
 }
