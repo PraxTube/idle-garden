@@ -199,12 +199,12 @@ fn spawn_number_pop_up(commands: &mut Commands, assets: &GameAssets, pos: Vec2) 
         Text2d(format!("+{}", CUT_TALL_GRASS_POINTS)),
         TextFont {
             font: assets.pixel_font.clone(),
-            font_size: 8.0,
+            font_size: 80.0,
             font_smoothing: FontSmoothing::None,
             ..default()
         },
         TextColor(Color::WHITE.with_alpha(1.0)),
-        Transform::from_translation(pos.extend(ZLevel::TopUi.value())),
+        Transform::from_translation(pos.extend(ZLevel::TopUi.value())).with_scale(Vec3::splat(0.1)),
     ));
 }
 
