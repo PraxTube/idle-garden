@@ -38,7 +38,7 @@ use crate::{
 
 use super::{collisions::intersection_aabb_circle, DynamicCollider, TILE_SIZE};
 
-pub const MAP_SIZE: usize = 50;
+pub const MAP_SIZE: usize = 80;
 const EMPTY_CELL_VALUE: u16 = u16::MAX;
 const PLAYER_BLOCKED_CELL_VALUE: u16 = u16::MAX - 1;
 const TALL_GRASS_CELL_VALUE: u16 = u16::MAX - 2;
