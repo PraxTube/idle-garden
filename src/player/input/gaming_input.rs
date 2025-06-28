@@ -51,8 +51,9 @@ fn handle_keyboard_inputs(
     let mut input = GamingInput::default();
 
     input.toggle_debug = keys.just_pressed(KeyCode::F3);
-    input.toggle_debug_grid = keys.just_pressed(KeyCode::KeyG);
-    input.toggle_debug_collision = keys.just_pressed(KeyCode::KeyL);
+    input.toggle_grid_debug = keys.just_pressed(KeyCode::KeyG);
+    input.toggle_collision_debug = keys.just_pressed(KeyCode::KeyL);
+    input.toggle_player_transform_debug = keys.just_pressed(KeyCode::KeyP);
 
     input.confirm = mouse_buttons.just_pressed(MouseButton::Left);
     input.cancel =

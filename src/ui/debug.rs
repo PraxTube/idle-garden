@@ -1,11 +1,13 @@
 use bevy::{prelude::*, text::FontSmoothing};
 
-use crate::{world::DebugState, GameAssets};
+use crate::{player::Player, world::DebugState, GameAssets, GameState};
 
 use super::outline::TextOutline;
 
 #[derive(Component)]
 struct DebugStateText;
+#[derive(Component)]
+struct PlayerTransformText;
 
 fn spawn_debug_state_text(
     mut commands: Commands,
@@ -54,15 +56,84 @@ fn despawn_debug_state_text(
     }
 }
 
+fn spawn_player_transform_text(mut commands: Commands, assets: Res<GameAssets>) {
+    commands.spawn((
+        PlayerTransformText,
+        Visibility::Hidden,
+        Node {
+            top: Val::Px(250.0),
+            left: Val::Percent(50.0),
+            ..default()
+        },
+        TextOutline::new(
+            String::new(),
+            1.0,
+            Color::WHITE,
+            Color::BLACK,
+            TextFont {
+                font: assets.pixel_font.clone(),
+                font_size: 25.0,
+                font_smoothing: FontSmoothing::None,
+                ..default()
+            },
+            true,
+        ),
+    ));
+}
+
+fn toggle_player_transform_text_visibility(
+    debug_state: Res<DebugState>,
+    mut q_visibility: Query<&mut Visibility, With<PlayerTransformText>>,
+) {
+    let Ok(mut visiblity) = q_visibility.single_mut() else {
+        return;
+    };
+
+    *visiblity = if debug_state.active && debug_state.player_transform_debug_active {
+        Visibility::Inherited
+    } else {
+        Visibility::Hidden
+    };
+}
+
+fn update_player_transform_text(
+    q_player: Query<&Transform, With<Player>>,
+    mut q_outline: Query<&mut TextOutline, With<PlayerTransformText>>,
+) {
+    let Ok(transform) = q_player.single() else {
+        return;
+    };
+
+    let Ok(mut outline) = q_outline.single_mut() else {
+        return;
+    };
+
+    let string = format!(
+        "x: {:.1}, y: {:.1}, z: {:.1}",
+        transform.translation.x, transform.translation.y, transform.translation.z
+    );
+
+    outline.text = string;
+}
+
 pub struct UiDebugPlugin;
 
 impl Plugin for UiDebugPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (spawn_debug_state_text, despawn_debug_state_text)
-                .chain()
-                .run_if(resource_exists::<GameAssets>),
-        );
+        app.add_systems(OnExit(GameState::AssetLoading), spawn_player_transform_text)
+            .add_systems(
+                Update,
+                (spawn_debug_state_text, despawn_debug_state_text)
+                    .chain()
+                    .run_if(resource_exists::<GameAssets>),
+            )
+            .add_systems(
+                Update,
+                (
+                    update_player_transform_text,
+                    toggle_player_transform_text_visibility,
+                )
+                    .chain(),
+            );
     }
 }

@@ -11,6 +11,7 @@ pub struct DebugState {
     pub changed_this_frame: bool,
     pub grid_debug_active: bool,
     pub collision_debug_active: bool,
+    pub player_transform_debug_active: bool,
 }
 
 fn reset_changed_this_frame_flag(mut debug_state: ResMut<DebugState>) {
@@ -28,7 +29,7 @@ fn toggle_grid_debug(mut debug_state: ResMut<DebugState>, gaming_input: Res<Gami
     if !debug_state.active {
         return;
     }
-    if !gaming_input.toggle_debug_grid {
+    if !gaming_input.toggle_grid_debug {
         return;
     }
 
@@ -39,11 +40,25 @@ fn toggle_collision_debug(mut debug_state: ResMut<DebugState>, gaming_input: Res
     if !debug_state.active {
         return;
     }
-    if !gaming_input.toggle_debug_collision {
+    if !gaming_input.toggle_collision_debug {
         return;
     }
 
     debug_state.collision_debug_active = !debug_state.collision_debug_active;
+}
+
+fn toggle_player_transform_debug(
+    mut debug_state: ResMut<DebugState>,
+    gaming_input: Res<GamingInput>,
+) {
+    if !debug_state.active {
+        return;
+    }
+    if !gaming_input.toggle_player_transform_debug {
+        return;
+    }
+
+    debug_state.player_transform_debug_active = !debug_state.player_transform_debug_active;
 }
 
 pub struct DebugPlugin;
@@ -57,6 +72,7 @@ impl Plugin for DebugPlugin {
                 toggle_debug_state,
                 toggle_grid_debug,
                 toggle_collision_debug,
+                toggle_player_transform_debug,
             )
                 .chain()
                 .after(InputControllerSystem),

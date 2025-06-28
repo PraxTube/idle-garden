@@ -3,26 +3,27 @@ use bevy::{color::palettes::css::PINK, prelude::*};
 use crate::{
     world::{
         collisions::{ColliderColor, StaticCollider, WORLD_COLLISION_GROUPS},
-        YSort, TILE_SIZE,
+        TILE_SIZE,
     },
     GameAssets, GameState,
 };
 
-use super::{MapData, MAP_SIZE};
+use super::{MapData, ZLevel, MAP_SIZE};
 
-fn map_indices_to_asset(assets: &GameAssets, x: usize, y: usize) -> (Handle<Image>, bool) {
+/// Return the correct asset handle, x flip, ysort above.
+fn indices_to_asset(assets: &GameAssets, x: usize, y: usize) -> (Handle<Image>, bool, bool) {
     if y == 0 && (x == 0 || x == MAP_SIZE + 1) {
-        return (assets.fence_bottom_corner.clone(), x == 0);
+        return (assets.fence_bottom_corner.clone(), x == 0, true);
     } else if y == MAP_SIZE + 1 && (x == 0 || x == MAP_SIZE + 1) {
-        return (assets.fence_top_corner.clone(), x == 0);
+        return (assets.fence_top_corner.clone(), x == 0, false);
     } else if x == 0 || x == MAP_SIZE + 1 {
-        return (assets.fence_vertical.clone(), x == 0);
+        return (assets.fence_vertical.clone(), x == 0, false);
     } else if y == 0 || y == MAP_SIZE + 1 {
-        return (assets.fence_horizontal.clone(), false);
+        return (assets.fence_horizontal.clone(), false, y == 0);
     }
 
     error!("incorrect mapping of fence! Must never happen");
-    (assets.fence_horizontal.clone(), true)
+    (assets.fence_horizontal.clone(), true, false)
 }
 
 fn spawn_map_border(mut commands: Commands) {
@@ -63,15 +64,20 @@ fn spawn_map_border(mut commands: Commands) {
 }
 
 fn spawn_fence(commands: &mut Commands, assets: &GameAssets, pos: Vec2, x: usize, y: usize) {
-    let (image, flip_x) = map_indices_to_asset(assets, x, y);
+    let (image, flip_x, ysort_above) = indices_to_asset(assets, x, y);
+    let z = if ysort_above {
+        ZLevel::TopEnvironment.value()
+    } else {
+        ZLevel::Background.value()
+    };
+
     commands.spawn((
         Sprite {
             image,
             flip_x,
             ..default()
         },
-        Transform::from_translation(pos.extend(0.0)),
-        YSort(0.0),
+        Transform::from_translation(pos.extend(z)),
     ));
 }
 
@@ -82,9 +88,6 @@ fn spawn_fences(mut commands: Commands, assets: Res<GameAssets>, map_data: Res<M
         for y in [0, MAP_SIZE + 1] {
             let pos = map_data.grid_indices_to_pos(x, y) - offset;
             spawn_fence(&mut commands, &assets, pos, x, y);
-            // let x = min.x + x as f32 * TILE_SIZE;
-            // debug_assert!(x <= max.x);
-            // positions.push(Vec2::new(x, y));
         }
     }
 
@@ -92,9 +95,6 @@ fn spawn_fences(mut commands: Commands, assets: Res<GameAssets>, map_data: Res<M
         for y in 0..MAP_SIZE + 2 {
             let pos = map_data.grid_indices_to_pos(x, y) - offset;
             spawn_fence(&mut commands, &assets, pos, x, y);
-            // let y = min.y + y as f32 * TILE_SIZE;
-            // debug_assert!(y <= max.y);
-            // positions.push(Vec2::new(x, y));
         }
     }
 }

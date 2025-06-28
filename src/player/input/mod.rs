@@ -56,8 +56,9 @@ struct PreviousCursorPosition(Vec2);
 #[derive(Resource, Default, Clone, Copy, PartialEq)]
 pub struct GamingInput {
     pub toggle_debug: bool,
-    pub toggle_debug_grid: bool,
-    pub toggle_debug_collision: bool,
+    pub toggle_grid_debug: bool,
+    pub toggle_collision_debug: bool,
+    pub toggle_player_transform_debug: bool,
 
     pub scroll: i32,
 
@@ -88,8 +89,9 @@ impl BitOrAssign for GamingInput {
         }
 
         self.toggle_debug |= rhs.toggle_debug;
-        self.toggle_debug_grid |= rhs.toggle_debug_grid;
-        self.toggle_debug_collision |= rhs.toggle_debug_collision;
+        self.toggle_grid_debug |= rhs.toggle_grid_debug;
+        self.toggle_collision_debug |= rhs.toggle_collision_debug;
+        self.toggle_player_transform_debug |= rhs.toggle_player_transform_debug;
 
         self.confirm |= rhs.confirm;
         self.cancel |= rhs.cancel;
