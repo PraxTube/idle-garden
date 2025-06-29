@@ -4,6 +4,7 @@ use bevy::{
     sprite::{AlphaMode2d, Material2d, Material2dPlugin},
     text::FontSmoothing,
 };
+use rand::{thread_rng, Rng};
 
 use crate::{
     assets::GRASS_SHADER,
@@ -28,6 +29,14 @@ use super::{
 // in other words when the grass is not moving through player shake.
 const TIME_TILL_SINE_RESET: f32 = 1.5;
 const OFFLINE_PROGRESSION_NUMBER_POP_UP_OFFSET: Vec2 = Vec2::new(0.0, 20.0);
+
+const QUAD_MAX_SHIFT_OFFSET: f32 = 3.0;
+const QUAD_OFFSETS: [Vec2; 4] = [
+    Vec2::new(TILE_SIZE * 0.25, TILE_SIZE * 0.25),
+    Vec2::new(TILE_SIZE * 0.25, -TILE_SIZE * 0.25),
+    Vec2::new(-TILE_SIZE * 0.25, -TILE_SIZE * 0.25),
+    Vec2::new(-TILE_SIZE * 0.25, TILE_SIZE * 0.25),
+];
 
 #[derive(Component)]
 struct TallGrass;
@@ -114,6 +123,30 @@ fn spawn_tall_grass(
     ));
 }
 
+fn spawn_tall_grass_in_quads(
+    commands: &mut Commands,
+    assets: &GameAssets,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<GrassMaterial>,
+    images: &Assets<Image>,
+    center_pos: Vec2,
+) {
+    let mut rng = thread_rng();
+    let mut threshold = 0.35;
+    for offset in QUAD_OFFSETS {
+        let threshold_check = rng.gen_range(0.0..1.0);
+
+        if threshold_check > threshold {
+            threshold += 0.3;
+            continue;
+        }
+
+        let random_shift = Vec2::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
+        let pos = center_pos + offset + random_shift * QUAD_MAX_SHIFT_OFFSET;
+        spawn_tall_grass(commands, assets, meshes, materials, images, pos);
+    }
+}
+
 fn spawn_grass(
     mut commands: Commands,
     assets: Res<GameAssets>,
@@ -125,20 +158,20 @@ fn spawn_grass(
     let size = (MAP_SIZE / 2) as i32;
     for i in -size..size {
         for j in -size..size {
-            let pos = Vec2::new(i as f32 * TILE_SIZE, j as f32 * TILE_SIZE);
+            let center_pos = Vec2::new(i as f32 * TILE_SIZE, j as f32 * TILE_SIZE);
 
-            let (x, y) = map_data.pos_to_grid_indices(pos);
+            let (x, y) = map_data.pos_to_grid_indices(center_pos);
             if map_data.grid_index(x, y) != TALL_GRASS_CELL_VALUE {
                 continue;
             }
 
-            spawn_tall_grass(
+            spawn_tall_grass_in_quads(
                 &mut commands,
                 &assets,
                 &mut meshes,
                 &mut materials,
                 &images,
-                pos,
+                center_pos,
             );
         }
     }
