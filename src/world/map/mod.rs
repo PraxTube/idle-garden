@@ -45,6 +45,7 @@ const TALL_GRASS_CELL_VALUE: u16 = u16::MAX - 2;
 
 const DEFAULT_POINTS_CAP: u64 = 800;
 const POINTS_CAP_INCEASE_PER_SILO: u64 = 200;
+const AUTO_SAVE_TIME_INTERVAL: u64 = 60;
 
 pub struct MapPlugin;
 
@@ -82,7 +83,8 @@ impl Plugin for MapPlugin {
                         .and(resource_exists::<MapData>)
                         .and(on_real_timer(Duration::from_secs(1))),
                 ),
-                trigger_auto_save.run_if(on_real_timer(Duration::from_secs(20))),
+                trigger_auto_save
+                    .run_if(on_real_timer(Duration::from_secs(AUTO_SAVE_TIME_INTERVAL))),
             )
                 .chain(),
         )
