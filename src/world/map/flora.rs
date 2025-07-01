@@ -27,6 +27,7 @@ use super::{
 pub struct FloraData {
     pub cost: u32,
     pub pps: u32,
+    tree_shader: bool,
     ysort: f32,
     gfx_offset: (f32, f32),
     collider_size: (f32, f32),
@@ -42,6 +43,7 @@ pub enum Flora {
     Sunflower,
     Tree,
     SwampTree,
+    Silo,
 }
 
 /// This is used as an Event, but because Events are a little more boiler plate I opted to use just
@@ -73,7 +75,7 @@ impl Flora {
     }
 
     fn last() -> Self {
-        Flora::SwampTree
+        Flora::Silo
     }
 
     pub fn len() -> usize {
@@ -172,19 +174,33 @@ fn spawn_flora(
 
     let image_size = Vec2::new(image.width() as f32, image.height() as f32);
 
-    commands.spawn((
-        ChildOf(root),
-        Transform::from_translation(gfx_offset.extend(0.0)).with_scale(image_size.extend(1.0)),
-        Mesh2d(meshes.add(Rectangle::default())),
-        MeshMaterial2d(
-            materials
-                .add(FloraMaterial {
-                    texel_size: (1.0 / image_size).extend(0.0).extend(0.0),
-                    texture: Some(image_handle.clone()),
-                })
-                .clone(),
-        ),
-    ));
+    let entity = commands.spawn(ChildOf(root)).id();
+
+    if data.tree_shader {
+        commands
+            .entity(entity)
+            .insert(
+                Transform::from_translation(gfx_offset.extend(0.0))
+                    .with_scale(image_size.extend(1.0)),
+            )
+            .insert(Mesh2d(meshes.add(Rectangle::default())))
+            .insert(MeshMaterial2d(
+                materials
+                    .add(FloraMaterial {
+                        texel_size: (1.0 / image_size).extend(0.0).extend(0.0),
+                        texture: Some(image_handle.clone()),
+                    })
+                    .clone(),
+            ));
+    } else {
+        commands
+            .entity(entity)
+            .insert(Transform::from_translation(gfx_offset.extend(0.0)))
+            .insert(Sprite {
+                image: image_handle.clone(),
+                ..default()
+            });
+    }
 }
 
 fn spawn_flora_on_item_bought(

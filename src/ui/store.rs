@@ -425,6 +425,7 @@ fn update_store_page_items(mut store_page: ResMut<StorePageItems>) {
     store_page.items[1] = Flora::Raddish;
     store_page.items[2] = Flora::Carrot;
     store_page.items[3] = Flora::SwampTree;
+    store_page.items[4] = Flora::Silo;
     store_page.items[6] = Flora::Sunflower;
     store_page.items[7] = Flora::Tree;
 }

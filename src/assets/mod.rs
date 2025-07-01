@@ -41,7 +41,8 @@ pub struct GameAssets {
             "ui/icons/carrot_icon.png",
             "ui/icons/sunflower_icon.png",
             "map/tree.png",
-            "map/swamp_tree.png"
+            "map/swamp_tree.png",
+            "map/silo.png",
         ),
         collection(typed)
     )]
@@ -74,6 +75,7 @@ pub struct GameAssets {
             "map/sunflower.png",
             "map/tree.png",
             "map/swamp_tree.png",
+            "map/silo.png",
         ),
         collection(typed)
     )]

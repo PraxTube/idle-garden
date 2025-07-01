@@ -9,6 +9,8 @@ struct StatsRoot;
 #[derive(Component)]
 struct PointsText;
 #[derive(Component)]
+struct PointsCapText;
+#[derive(Component)]
 struct PointsPerSecondText;
 
 fn spawn_stats(mut commands: Commands, assets: Res<GameAssets>) {
@@ -64,6 +66,29 @@ fn spawn_stats(mut commands: Commands, assets: Res<GameAssets>) {
 
     commands.spawn((
         ChildOf(container),
+        PointsCapText,
+        Node {
+            left: Val::Px(0.0),
+            top: Val::Px(120.0),
+            ..default()
+        },
+        TextOutline::new(
+            "$313101".to_string(),
+            1.0,
+            Color::WHITE,
+            Color::BLACK,
+            TextFont {
+                font: assets.pixel_font.clone(),
+                font_size: 35.0,
+                font_smoothing: FontSmoothing::None,
+                ..default()
+            },
+            false,
+        ),
+    ));
+
+    commands.spawn((
+        ChildOf(container),
         PointsPerSecondText,
         Node {
             left: Val::Px(0.0),
@@ -98,6 +123,17 @@ fn update_points_text(
     outline.text = format!("${}", core.points)
 }
 
+fn update_points_cap_text(
+    core: Res<ProgressionCore>,
+    mut q_text: Query<&mut TextOutline, With<PointsCapText>>,
+) {
+    let Ok(mut outline) = q_text.single_mut() else {
+        return;
+    };
+
+    outline.text = format!("Cap ${}", core.points_cap)
+}
+
 fn update_points_per_second_text(
     core: Res<ProgressionCore>,
     mut q_text: Query<&mut TextOutline, With<PointsPerSecondText>>,
@@ -116,7 +152,11 @@ impl Plugin for UiStatsPlugin {
         app.add_systems(OnExit(GameState::AssetLoading), spawn_stats)
             .add_systems(
                 Update,
-                (update_points_text, update_points_per_second_text)
+                (
+                    update_points_text,
+                    update_points_cap_text,
+                    update_points_per_second_text,
+                )
                     .run_if(resource_exists::<ProgressionCore>),
             );
     }

@@ -43,7 +43,8 @@ const EMPTY_CELL_VALUE: u16 = u16::MAX;
 const PLAYER_BLOCKED_CELL_VALUE: u16 = u16::MAX - 1;
 const TALL_GRASS_CELL_VALUE: u16 = u16::MAX - 2;
 
-const CUT_TALL_GRASS_POINTS: u64 = 1;
+const DEFAULT_POINTS_CAP: u64 = 800;
+const POINTS_CAP_INCEASE_PER_SILO: u64 = 200;
 
 pub struct MapPlugin;
 
@@ -88,13 +89,13 @@ impl Plugin for MapPlugin {
         .add_systems(
             Update,
             (
-                increase_points_on_cut_tall_grass,
                 update_map_data_on_tall_grass_cut,
                 block_grid_player_pos,
                 trigger_item_bought_on_item_pressed.run_if(resource_exists::<BachelorBuild>),
                 trigger_item_bought_on_blueprint_build.run_if(resource_exists::<BachelorBuild>),
                 update_progression_core_on_item_bought,
                 update_points_per_second,
+                update_points_cap,
                 add_points.run_if(on_timer(Duration::from_secs(1))),
                 reset_game_state,
                 save_game_state.run_if(on_event::<AutoSave>),
@@ -136,6 +137,7 @@ pub struct ProgressionCore {
     /// Don't use this value for anything else.
     offline_progression: u64,
     pub points: u64,
+    pub points_cap: u64,
     pub pps: u32,
     pub flora: Vec<u16>,
 }
@@ -171,6 +173,7 @@ impl ProgressionCore {
             previous_timestamp: 0,
             offline_progression: 0,
             points: 0,
+            points_cap: DEFAULT_POINTS_CAP,
             pps: 0,
             flora: vec![0; Flora::len()],
         }
@@ -578,8 +581,13 @@ fn update_points_per_second(mut core: ResMut<ProgressionCore>, map_data: Res<Map
     core.pps = pps;
 }
 
+fn update_points_cap(mut core: ResMut<ProgressionCore>) {
+    core.points_cap =
+        DEFAULT_POINTS_CAP + core.flora[Flora::Silo.index()] as u64 * POINTS_CAP_INCEASE_PER_SILO;
+}
+
 fn add_points(mut core: ResMut<ProgressionCore>) {
-    core.points += core.pps as u64;
+    core.points = (core.points + core.pps as u64).min(core.points_cap);
 }
 
 fn trigger_item_bought_on_item_pressed(
@@ -704,15 +712,6 @@ fn update_map_data_on_tall_grass_cut(
     }
 }
 
-fn increase_points_on_cut_tall_grass(
-    mut core: ResMut<ProgressionCore>,
-    mut ev_cut_tall_grass: EventReader<CutTallGrass>,
-) {
-    for _ in ev_cut_tall_grass.read() {
-        core.points += CUT_TALL_GRASS_POINTS;
-    }
-}
-
 #[cfg(not(target_arch = "wasm32"))]
 fn timestamp_native() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -754,7 +753,14 @@ fn add_offline_progression(mut core: ResMut<ProgressionCore>, map_data: Res<MapD
 
     let diff = timestamp - core.previous_timestamp;
     let pps = compute_current_pps(&core, &map_data) as u64;
-    let new_points = pps * diff;
+
+    debug_assert!(core.points <= core.points_cap);
+    if core.points == core.points_cap {
+        core.offline_progression = 0;
+        return;
+    }
+
+    let new_points = (pps * diff).min(core.points_cap - core.points);
     core.points += new_points;
     core.offline_progression = new_points;
 }

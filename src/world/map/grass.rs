@@ -20,8 +20,8 @@ use crate::{
 use crate::GameAssets;
 
 use super::{
-    flora::InitialFloraSpawned, MapData, ProgressionCore, ProgressionSystemSet,
-    CUT_TALL_GRASS_POINTS, MAP_SIZE, TALL_GRASS_CELL_VALUE,
+    flora::InitialFloraSpawned, MapData, ProgressionCore, ProgressionSystemSet, MAP_SIZE,
+    TALL_GRASS_CELL_VALUE,
 };
 
 // Should match the exp damp time scale used in the grass shader.
@@ -29,6 +29,7 @@ use super::{
 // in other words when the grass is not moving through player shake.
 const TIME_TILL_SINE_RESET: f32 = 1.5;
 const OFFLINE_PROGRESSION_NUMBER_POP_UP_OFFSET: Vec2 = Vec2::new(0.0, 20.0);
+const CUT_TALL_GRASS_POINTS: u64 = 1;
 
 const QUAD_MAX_SHIFT_OFFSET: f32 = 3.0;
 const QUAD_OFFSETS: [Vec2; 4] = [
@@ -246,9 +247,17 @@ fn spawn_number_pop_up(commands: &mut Commands, assets: &GameAssets, pos: Vec2, 
 fn spawn_number_pop_ups(
     mut commands: Commands,
     assets: Res<GameAssets>,
+    mut core: ResMut<ProgressionCore>,
     mut ev_cut_tall_grass: EventReader<CutTallGrass>,
 ) {
     for ev in ev_cut_tall_grass.read() {
+        debug_assert!(core.points <= core.points_cap);
+        if core.points == core.points_cap {
+            continue;
+        }
+
+        core.points += CUT_TALL_GRASS_POINTS;
+
         spawn_number_pop_up(
             &mut commands,
             &assets,
@@ -367,7 +376,9 @@ impl Plugin for MapGrassPlugin {
                 (
                     trigger_cut_tall_grass_event,
                     despawn_tall_grass,
-                    spawn_number_pop_ups.run_if(resource_exists::<GameAssets>),
+                    spawn_number_pop_ups.run_if(
+                        resource_exists::<GameAssets>.and(resource_exists::<ProgressionCore>),
+                    ),
                     spawn_offline_progress_number_pop_up.run_if(in_state(GameState::Gaming)),
                     animate_number_pop_ups,
                     despawn_number_pop_ups,
