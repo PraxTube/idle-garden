@@ -162,7 +162,7 @@ pub enum ZLevel {
 
 #[derive(Event)]
 pub struct ItemBought {
-    pos: Vec2,
+    pub pos: Vec2,
     item: Flora,
 }
 
@@ -307,14 +307,21 @@ impl MapData {
         self.flora_data[index].clone()
     }
 
-    /// Return whether the cells at the given position with the size are all empty.
-    fn fits_at_empty_position(&self, x: usize, y: usize, x_size: usize, y_size: usize) -> bool {
+    /// Return whether the cells at the given position with the size are all empty or grass.
+    fn fits_at_empty_or_grass_position(
+        &self,
+        x: usize,
+        y: usize,
+        x_size: usize,
+        y_size: usize,
+    ) -> bool {
         debug_assert_ne!(x_size, 0);
         debug_assert_ne!(y_size, 0);
 
         for inner_x in 0..x_size {
             for inner_y in 0..y_size {
-                if self.grid_index(x + inner_x, y + inner_y) != EMPTY_CELL_VALUE {
+                let index = self.grid_index(x + inner_x, y + inner_y);
+                if index != EMPTY_CELL_VALUE && index != TALL_GRASS_CELL_VALUE {
                     return false;
                 }
             }
@@ -325,7 +332,7 @@ impl MapData {
     fn fits_at_pos(&self, pos: Vec2, object_size: (usize, usize)) -> bool {
         let (x, y) = self.pos_to_grid_indices(pos);
         let (x_size, y_size) = object_size;
-        self.fits_at_empty_position(x, y, x_size, y_size)
+        self.fits_at_empty_or_grass_position(x, y, x_size, y_size)
     }
 
     fn set_map_data_value_at_pos(
@@ -338,7 +345,7 @@ impl MapData {
         let (x_size, y_size) = object_size;
 
         debug_assert!(
-            self.fits_at_empty_position(x, y, x_size, y_size),
+            self.fits_at_empty_or_grass_position(x, y, x_size, y_size),
             "value: {}, pos: {}, (x, y): {}, {}, grid: {}",
             value,
             bottom_left_corner_pos,

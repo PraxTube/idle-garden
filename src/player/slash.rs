@@ -2,7 +2,7 @@ use bevy::{prelude::*, ui::RelativeCursorPosition};
 
 use crate::{
     world::{
-        utils::quat_from_vec2, Blueprint, BuildingSystemSet, ProgressionSystemSet,
+        utils::quat_from_vec2, Blueprint, BuildingSystemSet, ItemBought, ProgressionSystemSet,
         StaticSensorCircle, ZLevel, SLASH_COLLISION_GROUPS,
     },
     GameAssets, GameState,
@@ -27,6 +27,30 @@ impl Default for Slash {
 }
 
 fn spawn_slash(
+    commands: &mut Commands,
+    assets: &GameAssets,
+    pos: Vec2,
+    rotation: Quat,
+    visible: bool,
+) {
+    let visibility = if visible {
+        Visibility::Inherited
+    } else {
+        Visibility::Hidden
+    };
+
+    commands.spawn((
+        Slash::default(),
+        Transform::from_translation(pos.extend(ZLevel::TopEnvironment.value()))
+            .with_rotation(rotation),
+        Sprite::from_image(assets.slash.clone()),
+        StaticSensorCircle::new(8.0, Vec2::ZERO),
+        SLASH_COLLISION_GROUPS,
+        visibility,
+    ));
+}
+
+fn spawn_slashes(
     mut commands: Commands,
     assets: Res<GameAssets>,
     gaming_input: Res<GamingInput>,
@@ -51,14 +75,23 @@ fn spawn_slash(
     let pos = player_transform.translation.xy()
         + OFFSET_DIRECTION.rotate(gaming_input.aim_direction) * OFFSET_MAGNITUDE;
 
-    commands.spawn((
-        Slash::default(),
-        Transform::from_translation(pos.extend(ZLevel::TopEnvironment.value()))
-            .with_rotation(quat_from_vec2(gaming_input.aim_direction)),
-        Sprite::from_image(assets.slash.clone()),
-        StaticSensorCircle::new(8.0, Vec2::ZERO),
-        SLASH_COLLISION_GROUPS,
-    ));
+    spawn_slash(
+        &mut commands,
+        &assets,
+        pos,
+        quat_from_vec2(gaming_input.aim_direction),
+        true,
+    );
+}
+
+fn spawn_slash_on_item_bought(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    mut ev_item_bought: EventReader<ItemBought>,
+) {
+    for ev in ev_item_bought.read() {
+        spawn_slash(&mut commands, &assets, ev.pos, Quat::IDENTITY, false);
+    }
 }
 
 fn despawn_slashes(
@@ -100,7 +133,8 @@ impl Plugin for PlayerSlashPlugin {
             (
                 despawn_slashes,
                 update_player_is_over_ui,
-                spawn_slash.run_if(resource_exists::<GameAssets>),
+                spawn_slashes.run_if(resource_exists::<GameAssets>),
+                spawn_slash_on_item_bought,
             )
                 .chain()
                 .run_if(in_state(GameState::Gaming))
