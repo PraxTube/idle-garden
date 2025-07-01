@@ -362,9 +362,12 @@ impl MapData {
         }
     }
 
-    /// Sets the value at the position to empty.
-    fn reset_map_data_at_pos(&mut self, pos: Vec2) {
+    /// Sets the value at the position to empty. Only works when the current index is tall grass.
+    fn set_tall_grass_cell_value_to_empty(&mut self, pos: Vec2) {
         let (x, y) = self.pos_to_grid_indices(pos);
+        if self.grid_index(x, y) != TALL_GRASS_CELL_VALUE {
+            return;
+        }
         self.grid[x][y] = EMPTY_CELL_VALUE;
     }
 }
@@ -717,7 +720,7 @@ fn update_map_data_on_tall_grass_cut(
     mut ev_cut_tall_grass: EventReader<CutTallGrass>,
 ) {
     for ev in ev_cut_tall_grass.read() {
-        map_data.reset_map_data_at_pos(ev.pos);
+        map_data.set_tall_grass_cell_value_to_empty(ev.pos);
     }
 }
 
