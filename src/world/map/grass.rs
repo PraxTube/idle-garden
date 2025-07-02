@@ -1,4 +1,5 @@
 use bevy::{
+    color::palettes::css::RED,
     prelude::*,
     render::render_resource::{AsBindGroup, ShaderRef},
     sprite::{AlphaMode2d, Material2d, Material2dPlugin},
@@ -20,8 +21,8 @@ use crate::{
 use crate::GameAssets;
 
 use super::{
-    flora::InitialFloraSpawned, MapData, ProgressionCore, ProgressionSystemSet, MAP_SIZE,
-    TALL_GRASS_CELL_VALUE,
+    flora::InitialFloraSpawned, ItemBought, MapData, ProgressionCore, ProgressionSystemSet,
+    MAP_SIZE, TALL_GRASS_CELL_VALUE,
 };
 
 // Should match the exp damp time scale used in the grass shader.
@@ -73,6 +74,15 @@ impl Default for NumberPopUp {
         Self {
             move_speed: 5.0,
             timer: Timer::from_seconds(0.7, TimerMode::Once),
+        }
+    }
+}
+
+impl NumberPopUp {
+    fn new(move_speed: f32, time: f32) -> Self {
+        Self {
+            move_speed,
+            timer: Timer::from_seconds(time, TimerMode::Once),
         }
     }
 }
@@ -229,18 +239,28 @@ fn trigger_cut_tall_grass_event(
     }
 }
 
-fn spawn_number_pop_up(commands: &mut Commands, assets: &GameAssets, pos: Vec2, text: String) {
+fn spawn_number_pop_up(
+    commands: &mut Commands,
+    assets: &GameAssets,
+    pos: Vec2,
+    text: String,
+    color: Color,
+    pop_up: NumberPopUp,
+    font_size: f32,
+    z_index_offset: f32,
+) {
     commands.spawn((
-        NumberPopUp::default(),
+        pop_up,
         Text2d(text),
         TextFont {
             font: assets.pixel_font.clone(),
-            font_size: 80.0,
+            font_size,
             font_smoothing: FontSmoothing::None,
             ..default()
         },
-        TextColor(Color::WHITE.with_alpha(1.0)),
-        Transform::from_translation(pos.extend(ZLevel::TopUi.value())).with_scale(Vec3::splat(0.1)),
+        TextColor(color),
+        Transform::from_translation(pos.extend(ZLevel::TopUi.value() + z_index_offset))
+            .with_scale(Vec3::splat(0.1)),
     ));
 }
 
@@ -263,6 +283,10 @@ fn spawn_number_pop_ups(
             &assets,
             ev.pos,
             format!("+{}", CUT_TALL_GRASS_POINTS),
+            Color::WHITE.with_alpha(1.0),
+            NumberPopUp::default(),
+            80.0,
+            0.0,
         );
     }
 }
@@ -288,8 +312,34 @@ fn spawn_offline_progress_number_pop_up(
         &assets,
         player_transform.translation.xy() + OFFLINE_PROGRESSION_NUMBER_POP_UP_OFFSET,
         format!("+{}", core.offline_progression),
+        Color::WHITE.with_alpha(1.0),
+        NumberPopUp::default(),
+        80.0,
+        0.0,
     );
     core.offline_progression = 0;
+}
+
+/// We spawn the item bought cost number pop up in here because it's convenient.
+/// It's not clean at all, but I don't care, it's easy to do right now.
+/// Same reason as for the offline progress.
+fn spawn_item_cost_number_pop_up_on_item_bought(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    mut ev_item_bought: EventReader<ItemBought>,
+) {
+    for ev in ev_item_bought.read() {
+        spawn_number_pop_up(
+            &mut commands,
+            &assets,
+            ev.pos,
+            format!("-{}", ev.cost),
+            RED.with_alpha(1.0).into(),
+            NumberPopUp::new(2.5, 3.0),
+            100.0,
+            1000.0,
+        );
+    }
 }
 
 fn animate_number_pop_ups(
@@ -379,7 +429,12 @@ impl Plugin for MapGrassPlugin {
                     spawn_number_pop_ups.run_if(
                         resource_exists::<GameAssets>.and(resource_exists::<ProgressionCore>),
                     ),
-                    spawn_offline_progress_number_pop_up.run_if(in_state(GameState::Gaming)),
+                    spawn_offline_progress_number_pop_up.run_if(
+                        in_state(GameState::Gaming).and(resource_exists::<ProgressionCore>),
+                    ),
+                    spawn_item_cost_number_pop_up_on_item_bought.run_if(
+                        resource_exists::<GameAssets>.and(resource_exists::<ProgressionCore>),
+                    ),
                     animate_number_pop_ups,
                     despawn_number_pop_ups,
                 )

@@ -163,6 +163,7 @@ pub enum ZLevel {
 #[derive(Event)]
 pub struct ItemBought {
     pub pos: Vec2,
+    pub cost: u32,
     item: Flora,
 }
 
@@ -620,6 +621,8 @@ fn trigger_item_bought_on_item_pressed(
         if core.is_affordable(&map_data, &ev.flora) {
             ev_item_bought.write(ItemBought {
                 pos: Vec2::ZERO,
+                cost: map_data.flora_data[ev.flora.index()]
+                    .cost(core.flora[ev.flora.index()].into()),
                 item: ev.flora,
             });
         }
@@ -661,6 +664,8 @@ fn trigger_item_bought_on_blueprint_build(
     if core.is_affordable(&map_data, &blueprint.item) {
         ev_item_bought.write(ItemBought {
             pos: transform.translation.xy(),
+            cost: map_data.flora_data[blueprint.item.index()]
+                .cost(core.flora[blueprint.item.index()].into()),
             item: blueprint.item,
         });
     }
