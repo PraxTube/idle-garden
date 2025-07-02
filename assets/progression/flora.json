@@ -1,6 +1,7 @@
 {
   "Potatoe": {
-    "cost": 1,
+    "base_cost": 1,
+    "cost_growth_factor": 1.5,
     "pps": 1,
     "tree_shader": false,
     "ysort": 0,
@@ -9,7 +10,8 @@
     "size_on_grid": [1, 1]
   },
   "Raddish": {
-    "cost": 500000,
+    "base_cost": 500000,
+    "cost_growth_factor": 1.5,
     "pps": 1,
     "tree_shader": false,
     "ysort": 0,
@@ -18,7 +20,8 @@
     "size_on_grid": [1, 1]
   },
   "Carrot": {
-    "cost": 50,
+    "base_cost": 50,
+    "cost_growth_factor": 1.5,
     "pps": 1,
     "tree_shader": false,
     "ysort": 0,
@@ -27,7 +30,8 @@
     "size_on_grid": [1, 1]
   },
   "SwampTree": {
-    "cost": 1,
+    "base_cost": 1,
+    "cost_growth_factor": 1.5,
     "pps": 1,
     "tree_shader": true,
     "ysort": 0,
@@ -36,7 +40,8 @@
     "size_on_grid": [1, 1]
   },
   "Sunflower": {
-    "cost": 50,
+    "base_cost": 50,
+    "cost_growth_factor": 1.5,
     "pps": 1,
     "tree_shader": false,
     "ysort": 0,
@@ -45,7 +50,8 @@
     "size_on_grid": [1, 1]
   },
   "Tree": {
-    "cost": 1,
+    "base_cost": 1,
+    "cost_growth_factor": 1.5,
     "pps": 5,
     "tree_shader": true,
     "ysort": 0,
@@ -54,7 +60,8 @@
     "size_on_grid": [1, 1]
   },
   "Silo": {
-    "cost": 1,
+    "base_cost": 1,
+    "cost_growth_factor": 1.0,
     "pps": 0,
     "tree_shader": false,
     "ysort": 0,

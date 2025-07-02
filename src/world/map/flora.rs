@@ -25,7 +25,8 @@ use super::{
 
 #[derive(Deserialize, Clone, Default)]
 pub struct FloraData {
-    pub cost: u32,
+    base_cost: u32,
+    cost_growth_factor: f32,
     pub pps: u32,
     tree_shader: bool,
     ysort: f32,
@@ -103,6 +104,10 @@ impl FloraData {
     pub fn gfx_offset(&self) -> Vec2 {
         let (x, y) = self.gfx_offset;
         Vec2::new(x, y)
+    }
+
+    pub fn cost(&self, count: usize) -> u32 {
+        self.base_cost * (self.cost_growth_factor.powi(count as i32)).floor() as u32
     }
 
     fn collider(&self) -> StaticCollider {

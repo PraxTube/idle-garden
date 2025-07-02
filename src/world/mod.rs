@@ -11,6 +11,8 @@ pub use collisions::{
     DynamicCollider, StaticSensorCircle, Velocity, PLAYER_COLLISION_GROUPS, SLASH_COLLISION_GROUPS,
 };
 pub use debug::DebugState;
+#[cfg(debug_assertions)]
+pub use map::simulate_progression;
 pub use map::{
     AutoSave, Blueprint, BuildingSystemSet, Flora, InitialFloraSpawned, ItemBought, MapData,
     ProgressionCore, ProgressionSystemSet, ZLevel,

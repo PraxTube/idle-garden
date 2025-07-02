@@ -313,6 +313,7 @@ fn hide_item_cost_texts(mut q_cost_texts: Query<&mut Visibility, With<ItemCostTe
 }
 
 fn update_item_cost_text(
+    core: Res<ProgressionCore>,
     map_data: Res<MapData>,
     store_page: Res<StorePageItems>,
     q_navigator: Query<&Navigator>,
@@ -343,7 +344,9 @@ fn update_item_cost_text(
         };
 
         let item = store_page.items[store_item.index];
-        let cost = map_data.flora_data(item.index()).cost;
+        let cost = map_data
+            .flora_data(item.index())
+            .cost(core.flora[item.index()].into());
 
         outline.text = format!("${}", cost);
         outline.color = color;

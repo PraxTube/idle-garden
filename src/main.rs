@@ -19,6 +19,7 @@ use bevy::prelude::*;
 use bevy::window::{PresentMode, Window, WindowMode, WindowResolution};
 
 use bevy_asset_loader::prelude::*;
+use world::simulate_progression;
 
 const BACKGROUND_COLOR: Color = Color::srgb(0.15, 0.62, 0.33);
 const DEFAULT_WINDOW_WIDTH: f32 = 1280.0;
@@ -40,6 +41,18 @@ pub struct BachelorBuild {
 struct BachelorBuildComponent;
 
 fn main() {
+    #[cfg(debug_assertions)]
+    use std::env::args;
+
+    #[cfg(debug_assertions)]
+    if args()
+        .find(|s| s.to_lowercase() == "simulate-progression")
+        .is_some()
+    {
+        simulate_progression();
+        return;
+    }
+
     App::new()
         .add_systems(Startup, spawn_bachelor_toggle)
         .add_systems(

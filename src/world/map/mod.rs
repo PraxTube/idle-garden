@@ -182,7 +182,10 @@ impl ProgressionCore {
     }
 
     pub fn is_affordable(&self, map_data: &MapData, flora: &Flora) -> bool {
-        self.points >= map_data.flora_data(flora.index()).cost as u64
+        self.points
+            >= map_data
+                .flora_data(flora.index())
+                .cost(self.flora[flora.index()].into()) as u64
     }
 }
 
@@ -669,10 +672,13 @@ fn update_progression_core_on_item_bought(
     mut ev_item_bought: EventReader<ItemBought>,
 ) {
     for ev in ev_item_bought.read() {
-        debug_assert!(core.points >= map_data.flora_data(ev.item.index()).cost as u64);
+        let cost = map_data
+            .flora_data(ev.item.index())
+            .cost(core.flora[ev.item.index()].into()) as u64;
 
+        debug_assert!(core.points >= cost);
+        core.points -= cost.min(core.points);
         core.flora[ev.item.index()] += 1;
-        core.points -= (map_data.flora_data(ev.item.index()).cost as u64).min(core.points);
     }
 }
 
@@ -775,6 +781,19 @@ fn add_offline_progression(mut core: ResMut<ProgressionCore>, map_data: Res<MapD
     let new_points = (pps * diff).min(core.points_cap - core.points);
     core.points += new_points;
     core.offline_progression = new_points;
+}
+
+#[cfg(debug_assertions)]
+pub fn simulate_progression() {
+    let mut core = ProgressionCore::empty();
+    let flora_data = MapData::build_flora_data();
+    assert_eq!(core.flora.len(), flora_data.len());
+
+    core.points = DEFAULT_POINTS_CAP / 10;
+    assert!(core.points > 0);
+
+    const MAX_TICKS: usize = 10_000;
+    for i in 0..MAX_TICKS {}
 }
 
 #[test]
