@@ -26,7 +26,9 @@ use super::{
 #[derive(Deserialize, Clone, Default)]
 pub struct FloraData {
     base_cost: u32,
-    cost_growth_factor: f32,
+    pub cost_growth_factor: f32,
+    // If false, will use linear growth.
+    exponential_growth: bool,
     pub pps: u32,
     tree_shader: bool,
     ysort: f32,
@@ -35,7 +37,7 @@ pub struct FloraData {
     size_on_grid: (usize, usize),
 }
 
-#[derive(Clone, Copy, Deserialize, Hash, Eq, PartialEq, Default, FromRepr)]
+#[derive(Clone, Copy, Deserialize, Hash, Eq, PartialEq, Default, FromRepr, Debug)]
 pub enum Flora {
     #[default]
     Potatoe,
@@ -107,7 +109,11 @@ impl FloraData {
     }
 
     pub fn cost(&self, count: usize) -> u32 {
-        self.base_cost * (self.cost_growth_factor.powi(count as i32)).floor() as u32
+        if self.exponential_growth {
+            self.base_cost * (self.cost_growth_factor.powi(count as i32)).floor() as u32
+        } else {
+            self.base_cost + (self.cost_growth_factor).round() as u32 * count as u32
+        }
     }
 
     fn collider(&self) -> StaticCollider {

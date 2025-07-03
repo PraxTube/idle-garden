@@ -44,7 +44,7 @@ const PLAYER_BLOCKED_CELL_VALUE: u16 = u16::MAX - 1;
 const TALL_GRASS_CELL_VALUE: u16 = u16::MAX - 2;
 
 const DEFAULT_POINTS_CAP: u64 = 800;
-const POINTS_CAP_INCEASE_PER_SILO: u64 = 200;
+const POINTS_CAP_INCEASE_PER_SILO: u64 = 300;
 const AUTO_SAVE_TIME_INTERVAL: u64 = 60;
 
 pub struct MapPlugin;
@@ -128,7 +128,7 @@ impl Plugin for MapPlugin {
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProgressionSystemSet;
 
-#[derive(Resource, Serialize, Deserialize)]
+#[derive(Resource, Serialize, Deserialize, Clone)]
 pub struct ProgressionCore {
     previous_timestamp: u64,
     /// We store the points generate while offline in here.
@@ -187,6 +187,11 @@ impl ProgressionCore {
             >= map_data
                 .flora_data(flora.index())
                 .cost(self.flora[flora.index()].into()) as u64
+    }
+
+    fn update_points_cap(&mut self) {
+        self.points_cap = DEFAULT_POINTS_CAP
+            + self.flora[Flora::Silo.index()] as u64 * POINTS_CAP_INCEASE_PER_SILO;
     }
 }
 
@@ -598,8 +603,7 @@ fn update_points_per_second(mut core: ResMut<ProgressionCore>, map_data: Res<Map
 }
 
 fn update_points_cap(mut core: ResMut<ProgressionCore>) {
-    core.points_cap =
-        DEFAULT_POINTS_CAP + core.flora[Flora::Silo.index()] as u64 * POINTS_CAP_INCEASE_PER_SILO;
+    core.update_points_cap();
 }
 
 fn add_points(mut core: ResMut<ProgressionCore>) {
@@ -790,15 +794,96 @@ fn add_offline_progression(mut core: ResMut<ProgressionCore>, map_data: Res<MapD
 
 #[cfg(debug_assertions)]
 pub fn simulate_progression() {
+    fn flora_evaluation(cost: u64, pps: u32) -> f32 {
+        if cost == 0 {
+            return f32::MAX;
+        }
+
+        (pps as f32) / (cost as f32)
+    }
+
+    fn get_next_item_index(core: &ProgressionCore, flora_data: &[FloraData]) -> Option<usize> {
+        if core.points
+            >= flora_data[Flora::Silo.index()].cost(core.flora[Flora::Silo.index()].into()) as u64
+        {
+            return Some(Flora::Silo.index());
+        }
+
+        let mut best_index = usize::MAX;
+        let mut best_evaluation = f32::NEG_INFINITY;
+        for i in 0..core.flora.len() {
+            let cost = flora_data[i].cost(core.flora[i].into()) as u64;
+            if core.points < cost {
+                continue;
+            }
+
+            let evaluation = flora_evaluation(cost, flora_data[i].pps);
+            if evaluation > best_evaluation {
+                best_index = i;
+                best_evaluation = evaluation;
+            }
+        }
+
+        if best_index == usize::MAX {
+            return None;
+        }
+        Some(best_index)
+    }
+
     let mut core = ProgressionCore::empty();
-    let flora_data = MapData::build_flora_data();
-    assert_eq!(core.flora.len(), flora_data.len());
+    let map_data = MapData::empty();
+    assert_eq!(core.flora.len(), map_data.flora_data.len());
 
     core.points = DEFAULT_POINTS_CAP / 10;
     assert!(core.points > 0);
 
-    const MAX_TICKS: usize = 10_000;
-    for i in 0..MAX_TICKS {}
+    let mut data = Vec::new();
+
+    const MAX_TICKS: usize = 1000;
+    for time in 0..MAX_TICKS {
+        data.push((time, core.clone()));
+
+        let pps = compute_current_pps(&core, &map_data);
+        core.pps = pps;
+        core.update_points_cap();
+        core.points = (core.points + core.pps as u64).min(core.points_cap);
+
+        let Some(index) = get_next_item_index(&core, &map_data.flora_data) else {
+            continue;
+        };
+
+        let cost = map_data.flora_data[index].cost(core.flora[index].into()) as u64;
+        assert!(core.points >= cost);
+        core.points -= cost;
+        core.flora[index] += 1;
+    }
+
+    let content = data
+        .iter()
+        .map(|(time, core)| {
+            format!(
+                "{}:{};{};{};[{}]",
+                time,
+                core.points,
+                core.points_cap,
+                core.pps,
+                core.flora
+                    .iter()
+                    .map(|f| format!("{}", f))
+                    .collect::<Vec<String>>()
+                    .join(",")
+            )
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    std::fs::write("SIMULATION_PROGRESS_OUT.csv", content).expect("failed to write to file");
+
+    println!("{}", core.points);
+    println!("{}", core.points_cap);
+    println!("{}", core.pps);
+
+    println!("{:?}", core.flora);
 }
 
 #[test]
@@ -868,4 +953,14 @@ fn validate_flora_len_matches_json_data() {
         serde_json::from_str(FLORA_DATA_CORE).expect("failed to parse flora data core to json str");
 
     assert_eq!(Flora::len(), map.len());
+}
+
+#[test]
+fn validate_silo_points_cap_increases_fast_enough() {
+    let map_data = MapData::empty();
+
+    assert!(
+        POINTS_CAP_INCEASE_PER_SILO
+            >= (map_data.flora_data[Flora::Silo.index()].cost_growth_factor).round() as u64
+    )
 }

@@ -2,6 +2,7 @@
   "Potatoe": {
     "base_cost": 1,
     "cost_growth_factor": 1.5,
+    "exponential_growth": true,
     "pps": 1,
     "tree_shader": false,
     "ysort": 0,
@@ -12,6 +13,7 @@
   "Raddish": {
     "base_cost": 500000,
     "cost_growth_factor": 1.5,
+    "exponential_growth": true,
     "pps": 1,
     "tree_shader": false,
     "ysort": 0,
@@ -22,6 +24,7 @@
   "Carrot": {
     "base_cost": 50,
     "cost_growth_factor": 1.5,
+    "exponential_growth": true,
     "pps": 1,
     "tree_shader": false,
     "ysort": 0,
@@ -32,6 +35,7 @@
   "SwampTree": {
     "base_cost": 1,
     "cost_growth_factor": 1.5,
+    "exponential_growth": true,
     "pps": 1,
     "tree_shader": true,
     "ysort": 0,
@@ -42,6 +46,7 @@
   "Sunflower": {
     "base_cost": 50,
     "cost_growth_factor": 1.5,
+    "exponential_growth": true,
     "pps": 1,
     "tree_shader": false,
     "ysort": 0,
@@ -52,6 +57,7 @@
   "Tree": {
     "base_cost": 1,
     "cost_growth_factor": 1.5,
+    "exponential_growth": true,
     "pps": 5,
     "tree_shader": true,
     "ysort": 0,
@@ -60,8 +66,9 @@
     "size_on_grid": [1, 1]
   },
   "Silo": {
-    "base_cost": 1,
-    "cost_growth_factor": 1.0,
+    "base_cost": 800,
+    "cost_growth_factor": 300.0,
+    "exponential_growth": false,
     "pps": 0,
     "tree_shader": false,
     "ysort": 0,
