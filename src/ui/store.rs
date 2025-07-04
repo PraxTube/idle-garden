@@ -7,7 +7,7 @@ use bevy::{
 
 use crate::{
     player::GamingInput,
-    world::{Flora, MapData, ProgressionCore},
+    world::{utils::format_money_string, Flora, MapData, ProgressionCore},
     GameAssets, GameState, DEFAULT_WINDOW_WIDTH,
 };
 
@@ -348,7 +348,7 @@ fn update_item_cost_text(
             .flora_data(item.index())
             .cost(core.flora[item.index()].into());
 
-        outline.text = format!("${}", cost);
+        outline.text = format_money_string(cost.into());
         outline.color = color;
 
         *visibility = Visibility::Inherited;

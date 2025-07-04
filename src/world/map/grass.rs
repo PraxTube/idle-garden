@@ -13,6 +13,7 @@ use crate::{
     ui::{MenuAction, MenuActionEvent},
     world::{
         collisions::{IntersectionEvent, StaticSensorAABB, GRASS_COLLISION_GROUPS},
+        utils::format_money_string_raw,
         DynamicCollider, Velocity, ZLevel, SLASH_COLLISION_GROUPS, TILE_SIZE,
     },
     GameState,
@@ -311,7 +312,7 @@ fn spawn_offline_progress_number_pop_up(
         &mut commands,
         &assets,
         player_transform.translation.xy() + OFFLINE_PROGRESSION_NUMBER_POP_UP_OFFSET,
-        format!("+{}", core.offline_progression),
+        "+".to_string() + &format_money_string_raw(core.offline_progression),
         Color::WHITE.with_alpha(1.0),
         NumberPopUp::default(),
         80.0,

@@ -1,6 +1,12 @@
 use bevy::{prelude::*, text::FontSmoothing};
 
-use crate::{world::ProgressionCore, GameAssets, GameState};
+use crate::{
+    world::{
+        utils::{format_money_string, format_money_string_raw},
+        ProgressionCore,
+    },
+    GameAssets, GameState,
+};
 
 use super::outline::TextOutline;
 
@@ -120,7 +126,7 @@ fn update_points_text(
         return;
     };
 
-    outline.text = format!("${}", core.points)
+    outline.text = format_money_string(core.points)
 }
 
 fn update_points_cap_text(
@@ -131,7 +137,7 @@ fn update_points_cap_text(
         return;
     };
 
-    outline.text = format!("Cap ${}", core.points_cap)
+    outline.text = "Cap ".to_string() + &format_money_string(core.points_cap);
 }
 
 fn update_points_per_second_text(
@@ -142,7 +148,7 @@ fn update_points_per_second_text(
         return;
     };
 
-    outline.text = format!("+{}/s", core.pps)
+    outline.text = "+".to_string() + &format_money_string_raw(core.pps.into()) + "/s";
 }
 
 pub struct UiStatsPlugin;
