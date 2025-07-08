@@ -14,7 +14,7 @@ use crate::{
     world::{
         collisions::{IntersectionEvent, StaticSensorAABB, GRASS_COLLISION_GROUPS},
         utils::format_money_string_raw,
-        DynamicCollider, Velocity, ZLevel, SLASH_COLLISION_GROUPS, TILE_SIZE,
+        DynamicCollider, Velocity, YSort, ZLevel, SLASH_COLLISION_GROUPS, TILE_SIZE,
     },
     GameState,
 };
@@ -116,8 +116,8 @@ fn spawn_tall_grass(
 
     commands.spawn((
         TallGrass,
-        Transform::from_translation(pos.extend(ZLevel::Floor.value()))
-            .with_scale(image_size.extend(1.0)),
+        YSort(0.0),
+        Transform::from_translation(pos.extend(0.0)).with_scale(image_size.extend(1.0)),
         // TODO: Spawn once and set to handle
         Mesh2d(meshes.add(Rectangle::default())),
         MeshMaterial2d(
