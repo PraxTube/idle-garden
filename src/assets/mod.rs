@@ -12,18 +12,23 @@ pub const MAP_DATA_FILE: &str = "assets/save/map_data";
 pub const PROGRESSION_CORE_FILE: &str = "assets/save/progression_core.json";
 #[cfg(not(target_arch = "wasm32"))]
 pub const PLAYER_SAVE_FILE: &str = "assets/save/player";
+#[cfg(not(target_arch = "wasm32"))]
+pub const GAME_TELEMETRY_FILE: &str = "assets/save/telemetry";
 
 #[cfg(target_arch = "wasm32")]
 pub const WASM_MAP_DATA_KEY_STORAGE: &str = "map-grid";
 #[cfg(target_arch = "wasm32")]
 pub const WASM_PROGRESSION_CORE_KEY_STORAGE: &str = "progression-core";
 #[cfg(target_arch = "wasm32")]
-pub const WASM_PLAYER_KEY_STORAGE: &str = "player";
+pub const WASM_PLAYER_KEY_STORAGE: &str = "game-telemetry";
 #[cfg(target_arch = "wasm32")]
-pub const WASM_KEYS: [&str; 3] = [
+pub const WASM_GAME_TELEMETRY_KEY_STORAGE: &str = "game-telemetry";
+#[cfg(target_arch = "wasm32")]
+pub const WASM_KEYS: [&str; 4] = [
     WASM_PROGRESSION_CORE_KEY_STORAGE,
     WASM_MAP_DATA_KEY_STORAGE,
     WASM_PLAYER_KEY_STORAGE,
+    WASM_GAME_TELEMETRY_KEY_STORAGE,
 ];
 
 #[derive(AssetCollection, Resource)]

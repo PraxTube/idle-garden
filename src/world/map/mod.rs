@@ -4,11 +4,13 @@ mod clouds;
 mod debug;
 mod flora;
 mod grass;
+mod telemetry;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs::{self, read_to_string};
 use std::{collections::HashMap, time::Duration};
 
+use telemetry::GameTelemetryManager;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -21,7 +23,7 @@ use bevy::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::assets::{MAP_DATA_FILE, PLAYER_SAVE_FILE, PROGRESSION_CORE_FILE};
+use crate::assets::{GAME_TELEMETRY_FILE, MAP_DATA_FILE, PLAYER_SAVE_FILE, PROGRESSION_CORE_FILE};
 #[cfg(target_arch = "wasm32")]
 use crate::assets::{WASM_KEYS, WASM_MAP_DATA_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE};
 
@@ -33,7 +35,7 @@ use crate::{
     assets::FLORA_DATA_CORE,
     player::{GamingInput, Player},
     ui::{ItemPressed, MenuAction, MenuActionEvent},
-    BachelorBuild, GameState,
+    BachelorBuild,
 };
 
 use super::{collisions::intersection_aabb_circle, DynamicCollider, TILE_SIZE};
@@ -58,13 +60,11 @@ impl Plugin for MapPlugin {
             clouds::CloudsPlugin,
             flora::MapFloraPlugin,
             grass::MapGrassPlugin,
+            telemetry::GameTelemetryPlugin,
         ))
         .add_event::<ItemBought>()
         .add_event::<AutoSave>()
-        .add_systems(
-            OnExit(GameState::AssetLoading),
-            (insert_progression_core, insert_map_data_resource),
-        )
+        .add_systems(Startup, (insert_progression_core, insert_map_data_resource))
         .add_systems(
             PreUpdate,
             (
@@ -474,7 +474,7 @@ fn insert_progression_core(mut commands: Commands) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn save_game_state_wasm(keys: &[&str; 3], data: &[String; 3]) {
+fn save_game_state_wasm(keys: &[&str; 4], data: &[String; 4]) {
     use web_sys::window;
 
     let storage = window()
@@ -504,13 +504,14 @@ extern "C" {
 fn sync_state_to_js(
     core: Res<ProgressionCore>,
     map_data: Res<MapData>,
+    telemetry: Res<GameTelemetryManager>,
     q_player: Query<&Transform, With<Player>>,
 ) {
     let Ok(player_transform) = q_player.single() else {
         return;
     };
 
-    let data = package_save_data(&core, &map_data, &player_transform);
+    let data = package_save_data(&core, &map_data, &telemetry, &player_transform);
     let save_data: HashMap<&&str, &String> = WASM_KEYS.iter().zip(data.iter()).collect();
 
     buffer_game_state(
@@ -519,22 +520,34 @@ fn sync_state_to_js(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn save_game_state_native(files: &[&str; 3], data: &[String; 3]) {
-    for i in 0..files.len() {
+fn save_game_state_native(data: &[String; 4]) {
+    const FILES: [&str; 4] = [
+        PROGRESSION_CORE_FILE,
+        MAP_DATA_FILE,
+        PLAYER_SAVE_FILE,
+        GAME_TELEMETRY_FILE,
+    ];
+
+    for i in 0..FILES.len() {
         let err_msg = format!(
             "failed to write data to file, file: {}, data: {}",
-            files[i], data[i]
+            FILES[i], data[i]
         );
 
-        fs::write(files[i], &data[i]).expect(&err_msg);
+        fs::write(FILES[i], &data[i]).expect(&err_msg);
     }
 }
 
+/// 1. Core
+/// 2. MapData
+/// 3. Player Pos
+/// 4. Game Telemetry
 fn package_save_data(
     core: &ProgressionCore,
     map_data: &MapData,
+    telemetry: &GameTelemetryManager,
     player_transform: &Transform,
-) -> [String; 3] {
+) -> [String; 4] {
     [
         serde_json::to_string(core).expect("failed to serialize progression core"),
         map_data.to_string(),
@@ -542,6 +555,7 @@ fn package_save_data(
             "{},{}",
             player_transform.translation.x, player_transform.translation.y
         ),
+        serde_json::to_string(telemetry).expect("failed to serialize game telemetry"),
     ]
 }
 
@@ -552,21 +566,20 @@ fn trigger_auto_save(mut ev_auto_save: EventWriter<AutoSave>) {
 fn save_game_state(
     core: Res<ProgressionCore>,
     map_data: Res<MapData>,
+    telemetry: Res<GameTelemetryManager>,
     q_player: Query<&Transform, With<Player>>,
 ) {
     let Ok(player_transform) = q_player.single() else {
         return;
     };
 
-    let data = package_save_data(&core, &map_data, &player_transform);
+    let data = package_save_data(&core, &map_data, &telemetry, &player_transform);
 
     #[cfg(target_arch = "wasm32")]
     save_game_state_wasm(&WASM_KEYS, &data);
 
     #[cfg(not(target_arch = "wasm32"))]
-    const FILES: [&str; 3] = [PROGRESSION_CORE_FILE, MAP_DATA_FILE, PLAYER_SAVE_FILE];
-    #[cfg(not(target_arch = "wasm32"))]
-    save_game_state_native(&FILES, &data);
+    save_game_state_native(&data);
 }
 
 fn reset_game_state(

@@ -19,6 +19,7 @@ use bevy::prelude::*;
 use bevy::window::{PresentMode, Window, WindowMode, WindowResolution};
 
 use bevy_asset_loader::prelude::*;
+#[cfg(debug_assertions)]
 use world::simulate_progression;
 
 const BACKGROUND_COLOR: Color = Color::srgb(0.15, 0.62, 0.33);

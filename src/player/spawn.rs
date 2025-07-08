@@ -29,14 +29,8 @@ fn player_from_string(raw_player: &str) -> Vec2 {
     let parts = raw_player
         .split_once(',')
         .expect("failed to split player string in local storage");
-    let x = parts
-        .0
-        .parse::<f32>()
-        .expect("failed to parse player pos to f32");
-    let y = parts
-        .1
-        .parse::<f32>()
-        .expect("failed to parse player pos to f32");
+    let x = parts.0.parse::<f32>().unwrap_or_default();
+    let y = parts.1.parse::<f32>().unwrap_or_default();
     Vec2::new(x, y)
 }
 
