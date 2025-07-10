@@ -767,6 +767,16 @@ fn timestamp_wasm() -> u64 {
     (Date::now() * 0.001) as u64
 }
 
+fn timestamp() -> u64 {
+    #[cfg(not(target_arch = "wasm32"))]
+    let timestamp = timestamp_native();
+
+    #[cfg(target_arch = "wasm32")]
+    let timestamp = timestamp_wasm();
+
+    timestamp
+}
+
 fn update_progression_core_timestamp(mut core: ResMut<ProgressionCore>) {
     #[cfg(not(target_arch = "wasm32"))]
     let timestamp = timestamp_native();
@@ -778,11 +788,7 @@ fn update_progression_core_timestamp(mut core: ResMut<ProgressionCore>) {
 }
 
 fn add_offline_progression(mut core: ResMut<ProgressionCore>, map_data: Res<MapData>) {
-    #[cfg(not(target_arch = "wasm32"))]
-    let timestamp = timestamp_native();
-
-    #[cfg(target_arch = "wasm32")]
-    let timestamp = timestamp_wasm();
+    let timestamp = timestamp();
 
     debug_assert!(timestamp > core.previous_timestamp);
 

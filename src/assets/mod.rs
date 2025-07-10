@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 
+pub const APIKEY: &str = include_str!("../../apikey.env");
+
 pub const FLORA_DATA_CORE: &str = include_str!("../../assets/progression/flora.json");
 pub const FLORA_SHADER: &str = "shaders/flora_shader.wgsl";
 pub const GRASS_SHADER: &str = "shaders/grass_shader.wgsl";
