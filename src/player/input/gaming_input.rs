@@ -61,16 +61,23 @@ fn handle_keyboard_inputs(
     input.slash = mouse_buttons.just_pressed(MouseButton::Left);
 
     let mut move_direction = Vec2::ZERO;
-    if keys.pressed(KeyCode::KeyJ) || keys.pressed(KeyCode::KeyS) {
+    if keys.pressed(KeyCode::KeyJ)
+        || keys.pressed(KeyCode::KeyS)
+        || keys.pressed(KeyCode::ArrowDown)
+    {
         move_direction += Vec2::NEG_Y;
     }
-    if keys.pressed(KeyCode::KeyK) || keys.pressed(KeyCode::KeyW) {
+    if keys.pressed(KeyCode::KeyK) || keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp)
+    {
         move_direction += Vec2::Y;
     }
-    if keys.pressed(KeyCode::KeyF) || keys.pressed(KeyCode::KeyD) {
+    if keys.pressed(KeyCode::KeyF)
+        || keys.pressed(KeyCode::KeyD)
+        || keys.pressed(KeyCode::ArrowRight)
+    {
         move_direction += Vec2::X;
     }
-    if keys.pressed(KeyCode::KeyA) {
+    if keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft) {
         move_direction += Vec2::NEG_X;
     }
     input.move_direction = move_direction.normalize_or_zero();
