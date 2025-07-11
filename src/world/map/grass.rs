@@ -189,21 +189,28 @@ fn spawn_grass(
     }
 }
 
-fn spawn_grass_on_reset(
-    commands: Commands,
+fn respawn_grass_on_reset(
+    mut commands: Commands,
     assets: Res<GameAssets>,
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<GrassMaterial>>,
     images: Res<Assets<Image>>,
     map_data: Res<MapData>,
+    q_grass: Query<Entity, With<TallGrass>>,
     mut ev_menu_action: EventReader<MenuActionEvent>,
 ) {
-    if ev_menu_action
+    if !ev_menu_action
         .read()
         .any(|ev| ev.action == MenuAction::Reset)
     {
-        spawn_grass(commands, assets, meshes, materials, images, map_data);
+        return;
     }
+
+    for entity in &q_grass {
+        commands.entity(entity).despawn();
+    }
+
+    spawn_grass(commands, assets, meshes, materials, images, map_data);
 }
 
 fn despawn_tall_grass(mut commands: Commands, mut ev_cut_tall_grass: EventReader<CutTallGrass>) {
@@ -418,7 +425,7 @@ impl Plugin for MapGrassPlugin {
                 Update,
                 (
                     spawn_grass.run_if(resource_exists::<InitialFloraSpawned>.and(run_once)),
-                    spawn_grass_on_reset.after(ProgressionSystemSet),
+                    respawn_grass_on_reset.after(ProgressionSystemSet),
                 )
                     .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
             )
