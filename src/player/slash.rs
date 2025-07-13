@@ -18,6 +18,11 @@ struct Slash {
     timer: Timer,
 }
 
+/// Event used to signal that a slash was spawned.
+/// Necessary for game telemetry, can probably be remove after Bachelor.
+#[derive(Event)]
+pub struct SpawnedSlash;
+
 impl Default for Slash {
     fn default() -> Self {
         Self {
@@ -56,6 +61,7 @@ fn spawn_slashes(
     gaming_input: Res<GamingInput>,
     q_blueprints: Query<&Blueprint>,
     q_player: Query<(&Transform, &Player)>,
+    mut ev_spawned_slash: EventWriter<SpawnedSlash>,
 ) {
     if !gaming_input.slash {
         return;
@@ -74,6 +80,8 @@ fn spawn_slashes(
 
     let pos = player_transform.translation.xy()
         + OFFSET_DIRECTION.rotate(gaming_input.aim_direction) * OFFSET_MAGNITUDE;
+
+    ev_spawned_slash.write(SpawnedSlash);
 
     spawn_slash(
         &mut commands,
@@ -128,7 +136,7 @@ pub struct PlayerSlashPlugin;
 
 impl Plugin for PlayerSlashPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_event::<SpawnedSlash>().add_systems(
             Update,
             (
                 despawn_slashes,

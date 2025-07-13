@@ -5,16 +5,21 @@ use serde::{Deserialize, Serialize};
 use bevy::{asset::uuid::Uuid, prelude::*, time::common_conditions::on_real_timer};
 use bevy_mod_reqwest::*;
 
-use super::{timestamp, ProgressionCore};
+use super::{timestamp, ItemBought, ProgressionCore};
 
-use crate::assets::APIKEY;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::assets::GAME_TELEMETRY_FILE;
 #[cfg(target_arch = "wasm32")]
 use crate::assets::WASM_GAME_TELEMETRY_KEY_STORAGE;
+use crate::{
+    assets::APIKEY,
+    player::{Player, PlayerMovementSystemSet, SpawnedSlash},
+    world::Velocity,
+};
 
 /// Interval of sending data to server in seconds.
 const DATA_UPLOAD_INTERVAL: u64 = 60;
+const PROGRESSION_CORE_INTERVAL: u64 = 1;
 
 const POST_URL: &str = "https://rancic.org:/telemetry";
 
@@ -28,10 +33,19 @@ pub struct GameTelemetryManager {
     non_ok_responses: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+/// Game telemetry of one interval (around 60 probably).
+/// Cores get added about once a second. Actions get added on demand.
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct GameTelemetry {
     cores: Vec<(u64, ProgressionCore)>,
     actions: Vec<(u64, usize)>,
+}
+
+enum TelemetryActions {
+    StartedMoving,
+    StoppedMoving,
+    Slash,
+    ItemBought,
 }
 
 impl GameTelemetryManager {
@@ -45,8 +59,35 @@ impl GameTelemetryManager {
 
     /// Clear the telemetries and responses, of course don't clear the UUID.
     fn clear(&mut self) {
-        self.telemetries = Vec::new();
-        self.non_ok_responses = Vec::new();
+        self.non_ok_responses.clear();
+
+        if self.telemetries.len() > 1 {
+            self.telemetries.drain(0..self.telemetries.len() - 1);
+        } else {
+            error!(
+                "game telemetry should contain at least 2 GameTelemetry entries, number of entries: {}",
+                self.telemetries.len()
+            );
+        }
+    }
+
+    fn last_index(&mut self) -> usize {
+        if self.telemetries.is_empty() {
+            self.telemetries.push(GameTelemetry::default());
+        }
+
+        self.telemetries.len() - 1
+    }
+}
+
+impl TelemetryActions {
+    fn index(self) -> usize {
+        match self {
+            TelemetryActions::StartedMoving => 0,
+            TelemetryActions::StoppedMoving => 1,
+            TelemetryActions::Slash => 2,
+            TelemetryActions::ItemBought => 3,
+        }
     }
 }
 
@@ -149,6 +190,84 @@ fn generate_hmac(payload: &str) -> String {
     encode(code_bytes)
 }
 
+fn insert_new_game_telemetry(mut telemetry: ResMut<GameTelemetryManager>) {
+    telemetry.telemetries.push(GameTelemetry::default());
+}
+
+fn add_progression_core_to_telemetry_manager(
+    core: Res<ProgressionCore>,
+    mut telemetry: ResMut<GameTelemetryManager>,
+) {
+    if telemetry.telemetries.is_empty() {
+        telemetry.telemetries.push(GameTelemetry::default());
+    }
+
+    let index = telemetry.telemetries.len() - 1;
+    telemetry.telemetries[index]
+        .cores
+        .push((timestamp(), core.clone()));
+}
+
+fn add_telemetry_actions(
+    mut telemetry: ResMut<GameTelemetryManager>,
+    q_player: Query<&Velocity, With<Player>>,
+    mut ev_item_bought: EventReader<ItemBought>,
+    mut ev_spawned_slash: EventReader<SpawnedSlash>,
+    mut player_was_moving: Local<bool>,
+) {
+    let index = telemetry.last_index();
+    let timestamp = timestamp();
+
+    for _ in ev_item_bought.read() {
+        telemetry.telemetries[index]
+            .actions
+            .push((timestamp, TelemetryActions::ItemBought.index()));
+    }
+
+    for _ in ev_spawned_slash.read() {
+        telemetry.telemetries[index]
+            .actions
+            .push((timestamp, TelemetryActions::Slash.index()));
+    }
+
+    let Ok(player_velocity) = q_player.single() else {
+        return;
+    };
+
+    if player_velocity.0 == Vec2::ZERO && *player_was_moving {
+        telemetry.telemetries[index]
+            .actions
+            .push((timestamp, TelemetryActions::StoppedMoving.index()));
+    } else if player_velocity.0 != Vec2::ZERO && !*player_was_moving {
+        telemetry.telemetries[index]
+            .actions
+            .push((timestamp, TelemetryActions::StartedMoving.index()));
+    }
+
+    *player_was_moving = player_velocity.0 != Vec2::ZERO;
+}
+
+fn debuggy(telemetry: Res<GameTelemetryManager>) {
+    let mut cores = Vec::new();
+    for t in &telemetry.telemetries {
+        cores.push(t.cores.len());
+    }
+
+    let mut actions = Vec::new();
+    for t in &telemetry.telemetries {
+        for a in &t.actions {
+            actions.push(a);
+        }
+    }
+
+    info!(
+        "{}, {:?}, {:?}",
+        telemetry.telemetries.len(),
+        cores,
+        actions
+    );
+}
+
 pub struct GameTelemetryPlugin;
 
 impl Plugin for GameTelemetryPlugin {
@@ -157,10 +276,20 @@ impl Plugin for GameTelemetryPlugin {
             .add_systems(Startup, insert_game_telemetry_manager)
             .add_systems(
                 Update,
-                send_data_to_server.run_if(
-                    resource_exists::<GameTelemetryManager>
-                        .and(on_real_timer(Duration::from_secs(DATA_UPLOAD_INTERVAL))),
-                ),
+                (
+                    insert_new_game_telemetry
+                        .run_if(on_real_timer(Duration::from_secs(DATA_UPLOAD_INTERVAL))),
+                    add_progression_core_to_telemetry_manager.run_if(on_real_timer(
+                        Duration::from_secs(PROGRESSION_CORE_INTERVAL),
+                    )),
+                    add_telemetry_actions.after(PlayerMovementSystemSet),
+                    send_data_to_server
+                        .run_if(on_real_timer(Duration::from_secs(DATA_UPLOAD_INTERVAL))),
+                )
+                    .chain()
+                    .run_if(resource_exists::<GameTelemetryManager>),
             );
+
+        app.add_systems(Update, debuggy);
     }
 }

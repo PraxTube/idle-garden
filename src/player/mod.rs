@@ -4,6 +4,8 @@ mod slash;
 mod spawn;
 
 pub use input::{GamingInput, InputControllerSystem};
+pub use movement::PlayerMovementSystemSet;
+pub use slash::SpawnedSlash;
 
 use bevy::prelude::*;
 

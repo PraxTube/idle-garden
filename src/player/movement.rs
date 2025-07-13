@@ -8,6 +8,12 @@ use super::input::GamingInput;
 use super::spawn::DEFAULT_PLAYER_SPAWN_POS;
 use super::{Player, MOVE_SPEED};
 
+/// System set that updates the player velocity, but doesn't actually move the player.
+/// That happens in the collision/physics system.
+/// This only updates the "ideal" player velocity.
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PlayerMovementSystemSet;
+
 fn reset_velocity(mut q_player: Query<&mut Velocity, With<Player>>) {
     let Ok(mut velocity) = q_player.single_mut() else {
         return;
@@ -54,6 +60,11 @@ impl Plugin for PlayerMovementPlugin {
             PreUpdate,
             (reset_velocity, set_player_pos_to_default_on_reset),
         )
-        .add_systems(Update, move_running.run_if(in_state(GameState::Gaming)));
+        .add_systems(
+            Update,
+            move_running
+                .in_set(PlayerMovementSystemSet)
+                .run_if(in_state(GameState::Gaming)),
+        );
     }
 }
