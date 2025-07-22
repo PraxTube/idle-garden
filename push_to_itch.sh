@@ -2,7 +2,7 @@
 # It is required to have itch `butler` installed.
 
 binary="idle-garden"
-itch_target="PraxTube/idle-garden"
+itch_target="Rancic/idle-garden"
 tag=$"v$(grep -m 1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')"
 
 rm -rf tmp_wasm
