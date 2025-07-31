@@ -10,12 +10,12 @@ mod telemetry;
 use std::fs::{self, read_to_string};
 use std::{collections::HashMap, time::Duration};
 
-use telemetry::GameTelemetryManager;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 pub use building::{Blueprint, BuildingSystemSet};
 pub use flora::{Flora, InitialFloraSpawned};
+use telemetry::GameTelemetryManager;
 
 use bevy::{
     prelude::*,

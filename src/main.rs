@@ -30,6 +30,8 @@ pub enum GameState {
     #[default]
     AssetLoading,
     BachelorToggle,
+    ConsentCheck,
+    ConsentNotice,
     Gaming,
     Menu,
 }
@@ -133,7 +135,7 @@ fn continue_from_bachelor_state(
 
     let with_building = !keys.just_pressed(KeyCode::Digit1) | keys.just_pressed(KeyCode::Digit2);
     commands.insert_resource(BachelorBuild { with_building });
-    next_state.set(GameState::Gaming);
+    next_state.set(GameState::ConsentCheck);
 
     for entity in &q_bachelor_components {
         commands.entity(entity).despawn();

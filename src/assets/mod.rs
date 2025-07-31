@@ -16,6 +16,8 @@ pub const PROGRESSION_CORE_FILE: &str = "assets/save/progression_core.json";
 pub const PLAYER_SAVE_FILE: &str = "assets/save/player";
 #[cfg(not(target_arch = "wasm32"))]
 pub const GAME_TELEMETRY_FILE: &str = "assets/save/telemetry";
+#[cfg(not(target_arch = "wasm32"))]
+pub const CONSENT_FILE: &str = "assets/save/consent";
 
 #[cfg(target_arch = "wasm32")]
 pub const WASM_MAP_DATA_KEY_STORAGE: &str = "map-grid";
@@ -25,6 +27,8 @@ pub const WASM_PROGRESSION_CORE_KEY_STORAGE: &str = "progression-core";
 pub const WASM_PLAYER_KEY_STORAGE: &str = "game-telemetry";
 #[cfg(target_arch = "wasm32")]
 pub const WASM_GAME_TELEMETRY_KEY_STORAGE: &str = "game-telemetry";
+#[cfg(target_arch = "wasm32")]
+pub const WASM_CONSENT_STORAGE: &str = "consent";
 #[cfg(target_arch = "wasm32")]
 pub const WASM_KEYS: [&str; 4] = [
     WASM_PROGRESSION_CORE_KEY_STORAGE,
