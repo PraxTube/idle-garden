@@ -14,6 +14,7 @@ use crate::assets::WASM_GAME_TELEMETRY_KEY_STORAGE;
 use crate::{
     assets::APIKEY,
     player::{Player, PlayerMovementSystemSet, SpawnedSlash},
+    ui::Consent,
     world::Velocity,
 };
 
@@ -139,7 +140,15 @@ fn insert_game_telemetry_manager(mut commands: Commands) {
     insert_game_telemetry_wasm(&mut commands);
 }
 
-fn send_data_to_server(telemetry: Res<GameTelemetryManager>, mut client: BevyReqwest) {
+fn send_data_to_server(
+    telemetry: Res<GameTelemetryManager>,
+    consent: Res<Consent>,
+    mut client: BevyReqwest,
+) {
+    if !consent.0 {
+        return;
+    }
+
     let payload = serde_json::to_string(&*telemetry)
         .expect("failed to parse GameTelemetryManager to json string");
     let hmac = generate_hmac(&payload);
@@ -193,14 +202,22 @@ fn generate_hmac(payload: &str) -> String {
     encode(code_bytes)
 }
 
-fn insert_new_game_telemetry(mut telemetry: ResMut<GameTelemetryManager>) {
+fn insert_new_game_telemetry(mut telemetry: ResMut<GameTelemetryManager>, consent: Res<Consent>) {
+    if !consent.0 {
+        return;
+    }
     telemetry.telemetries.push(GameTelemetry::default());
 }
 
 fn add_progression_core_to_telemetry_manager(
     core: Res<ProgressionCore>,
+    consent: Res<Consent>,
     mut telemetry: ResMut<GameTelemetryManager>,
 ) {
+    if !consent.0 {
+        return;
+    }
+
     if telemetry.telemetries.is_empty() {
         telemetry.telemetries.push(GameTelemetry::default());
     }
@@ -211,11 +228,16 @@ fn add_progression_core_to_telemetry_manager(
 
 fn add_telemetry_actions(
     mut telemetry: ResMut<GameTelemetryManager>,
+    consent: Res<Consent>,
     q_player: Query<&Velocity, With<Player>>,
     mut ev_item_bought: EventReader<ItemBought>,
     mut ev_spawned_slash: EventReader<SpawnedSlash>,
     mut player_was_moving: Local<bool>,
 ) {
+    if !consent.0 {
+        return;
+    }
+
     let index = telemetry.last_index();
     let timestamp = timestamp();
 

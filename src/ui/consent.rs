@@ -6,12 +6,23 @@ use bevy::{
 
 use crate::{GameAssets, GameState};
 
+use super::{MenuAction, MenuActionEvent};
+
 const CONSENT_NOTICE: &str = "The game collects user data for the purpose of my Bachelor Thesis.\n\nThe data is used for research only.\n\nRead which data is being tracked on the Itch page. You can disable this in the settings.";
 
 #[derive(Component)]
 struct OkayButton;
 #[derive(Component)]
 struct ConsentRoot;
+
+#[derive(Resource)]
+pub struct Consent(pub bool);
+
+impl Default for Consent {
+    fn default() -> Self {
+        Self(true)
+    }
+}
 
 fn spawn_consent(mut commands: Commands, assets: Res<GameAssets>) {
     let background = commands
@@ -162,22 +173,26 @@ fn despawn_consent(mut commands: Commands, q_button: Query<Entity, With<ConsentR
     }
 }
 
-fn check_consent(mut next_state: ResMut<NextState<GameState>>) {
+fn read_consent() -> String {
     #[cfg(target_arch = "wasm32")]
-    let has_consent = check_consent_wasm();
+    let reply = check_consent_wasm();
 
     #[cfg(not(target_arch = "wasm32"))]
-    let has_consent = check_consent_native();
+    let reply = check_consent_native();
 
-    if has_consent {
-        next_state.set(GameState::Gaming);
-    } else {
+    reply
+}
+
+fn check_consent(mut next_state: ResMut<NextState<GameState>>) {
+    if read_consent().is_empty() {
         next_state.set(GameState::ConsentNotice);
+    } else {
+        next_state.set(GameState::Gaming);
     }
 }
 
 #[cfg(target_arch = "wasm32")]
-fn check_consent_wasm() -> bool {
+fn check_consent_wasm() -> String {
     use crate::assets::WASM_CONSENT_STORAGE;
     use web_sys::window;
 
@@ -190,29 +205,44 @@ fn check_consent_wasm() -> bool {
     storage
         .get_item(WASM_CONSENT_STORAGE)
         .expect("failed to get local storage item WASM key")
-        .is_some()
+        .unwrap_or_default()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn check_consent_native() -> bool {
+fn check_consent_native() -> String {
     use crate::assets::CONSENT_FILE;
     use std::fs::read_to_string;
 
-    !read_to_string(CONSENT_FILE)
-        .expect("failed to read progression core file")
-        .is_empty()
+    read_to_string(CONSENT_FILE).expect("failed to read progression core file")
 }
 
-fn write_consent() {
+fn write_initial_consent() {
+    write_consent("true");
+}
+
+fn write_consent(msg: &str) {
     #[cfg(target_arch = "wasm32")]
-    write_consent_wasm();
+    write_consent_wasm(msg);
 
     #[cfg(not(target_arch = "wasm32"))]
-    write_consent_native();
+    write_consent_native(msg);
+}
+
+fn update_consent(mut consent: ResMut<Consent>, mut ev_menu_action: EventReader<MenuActionEvent>) {
+    for ev in ev_menu_action.read() {
+        if ev.action == MenuAction::SendDataNo {
+            consent.0 = true;
+            write_consent("true");
+        }
+        if ev.action == MenuAction::SendDataYes {
+            consent.0 = false;
+            write_consent("false");
+        }
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
-fn write_consent_wasm() {
+fn write_consent_wasm(msg: &str) {
     use crate::assets::WASM_CONSENT_STORAGE;
     use web_sys::window;
 
@@ -223,31 +253,39 @@ fn write_consent_wasm() {
         .expect("failed to unwrap local storage");
 
     storage
-        .set_item(WASM_CONSENT_STORAGE, "You are awesome!")
+        .set_item(WASM_CONSENT_STORAGE, msg)
         .expect("failed to write to consent storage");
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn write_consent_native() {
+fn write_consent_native(msg: &str) {
     use crate::assets::CONSENT_FILE;
     use std::fs;
 
-    fs::write(CONSENT_FILE, "You are awesome!").expect("failed to write to consent file");
+    fs::write(CONSENT_FILE, msg).expect("failed to write to consent file");
+}
+
+fn insert_consent_resource(mut commands: Commands) {
+    if read_consent() == "false" {
+        commands.insert_resource(Consent(false));
+    }
 }
 
 pub struct UiConsentPlugin;
 
 impl Plugin for UiConsentPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (check_consent).run_if(in_state(GameState::ConsentCheck)),
-        )
-        .add_systems(OnEnter(GameState::ConsentNotice), spawn_consent)
-        .add_systems(
-            OnExit(GameState::ConsentNotice),
-            (write_consent, despawn_consent),
-        )
-        .add_systems(Update, handle_button);
+        app.init_resource::<Consent>()
+            .add_systems(Startup, insert_consent_resource)
+            .add_systems(
+                Update,
+                (check_consent).run_if(in_state(GameState::ConsentCheck)),
+            )
+            .add_systems(OnEnter(GameState::ConsentNotice), spawn_consent)
+            .add_systems(
+                OnExit(GameState::ConsentNotice),
+                (write_initial_consent, despawn_consent),
+            )
+            .add_systems(Update, (handle_button, update_consent));
     }
 }

@@ -6,6 +6,8 @@ use bevy::{
 
 use crate::{player::GamingInput, GameAssets, GameState};
 
+use super::Consent;
+
 const DEFAULT_FONT_SIZE: f32 = 25.0;
 const RESET_UNLOCK_TIME: f32 = 3.0;
 
@@ -18,15 +20,17 @@ struct MenuScreen;
 #[derive(Component)]
 struct NonInteractable;
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum MenuAction {
     Continue,
+    SendDataYes,
+    SendDataNo,
     ResetPopUp,
     Reset,
     CancelReset,
     UnlockReset,
 }
-#[derive(Component)]
+#[derive(Component, Debug)]
 struct MenuData {
     action: MenuAction,
 }
@@ -49,6 +53,8 @@ impl MenuAction {
     fn string(self) -> String {
         let s = match self {
             Self::Continue => "Continue",
+            Self::SendDataYes => "Send Data=Y",
+            Self::SendDataNo => "Send Data=N",
             Self::ResetPopUp => "Reset",
             Self::Reset => "Reset",
             Self::CancelReset => "Cancel",
@@ -127,12 +133,22 @@ fn spawn_background(commands: &mut Commands, assets: &GameAssets) -> Entity {
     root
 }
 
-fn spawn_buttons(commands: &mut Commands, font: Handle<Font>) -> Entity {
+fn spawn_buttons(commands: &mut Commands, font: Handle<Font>, consent: bool) -> Entity {
     let continue_button = spawn_button(
         commands,
         font.clone(),
         DEFAULT_FONT_SIZE,
         MenuAction::Continue,
+    );
+    let send_data = spawn_button(
+        commands,
+        font.clone(),
+        DEFAULT_FONT_SIZE,
+        if consent {
+            MenuAction::SendDataYes
+        } else {
+            MenuAction::SendDataNo
+        },
     );
     let reset_button = spawn_button(
         commands,
@@ -141,7 +157,7 @@ fn spawn_buttons(commands: &mut Commands, font: Handle<Font>) -> Entity {
         MenuAction::ResetPopUp,
     );
 
-    let vertical_buttons = [continue_button, reset_button];
+    let vertical_buttons = [continue_button, send_data, reset_button];
 
     let buttons = commands
         .spawn((Node {
@@ -170,9 +186,9 @@ fn spawn_buttons(commands: &mut Commands, font: Handle<Font>) -> Entity {
         .id()
 }
 
-fn spawn_menu(mut commands: Commands, assets: Res<GameAssets>) {
+fn spawn_menu(mut commands: Commands, assets: Res<GameAssets>, consent: Res<Consent>) {
     let background = spawn_background(&mut commands, &assets);
-    let button_container = spawn_buttons(&mut commands, assets.pixel_font.clone());
+    let button_container = spawn_buttons(&mut commands, assets.pixel_font.clone(), consent.0);
 
     commands
         .spawn((
@@ -228,6 +244,8 @@ fn trigger_menu_action(
         error!("there is no matching MenuData from Entity, must never happen!");
         return;
     };
+
+    info!("{:?}", menu_data.action);
 
     ev_menu_action.write(MenuActionEvent {
         action: menu_data.action,
@@ -549,6 +567,41 @@ fn set_buttons_active_on_cancel_reset(
     }
 }
 
+fn toggle_send_data_button(
+    mut q_texts: Query<(&mut Text, &mut MenuData)>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    let mut toggle_on = false;
+    let mut toggle_off = false;
+
+    for ev in ev_menu_action.read() {
+        if ev.action == MenuAction::SendDataYes {
+            toggle_on = true;
+        }
+        if ev.action == MenuAction::SendDataNo {
+            toggle_off = true;
+        }
+    }
+
+    debug_assert!(!(toggle_on && toggle_off));
+
+    if toggle_off {
+        for (mut text, mut data) in &mut q_texts {
+            if data.action == MenuAction::SendDataNo {
+                data.action = MenuAction::SendDataYes;
+                text.0 = MenuAction::SendDataYes.string();
+            }
+        }
+    } else if toggle_on {
+        for (mut text, mut data) in &mut q_texts {
+            if data.action == MenuAction::SendDataYes {
+                data.action = MenuAction::SendDataNo;
+                text.0 = MenuAction::SendDataNo.string();
+            }
+        }
+    }
+}
+
 pub struct UiMenuPlugin;
 
 impl Plugin for UiMenuPlugin {
@@ -569,6 +622,7 @@ impl Plugin for UiMenuPlugin {
                     close_menu_and_trigger_continue_action.run_if(in_state(GameState::Menu)),
                     trigger_close_reset_pop_up_event,
                     despawn_reset_pop_up,
+                    toggle_send_data_button,
                     update_reset_pop_up_timer_text,
                     remove_reset_pop_up_timer_component,
                     remove_non_interactable_from_reset_button,

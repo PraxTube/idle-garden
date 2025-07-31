@@ -6,6 +6,7 @@ mod outline;
 mod stats;
 mod store;
 
+pub use consent::Consent;
 pub use menu::{MenuAction, MenuActionEvent};
 pub use store::ItemPressed;
 
