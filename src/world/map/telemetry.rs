@@ -29,15 +29,18 @@ struct PostRequestMarker;
 #[derive(Resource, Serialize, Deserialize)]
 pub struct GameTelemetryManager {
     telemetries: Vec<GameTelemetry>,
-    user_uuid: Uuid,
-    non_ok_responses: Vec<String>,
+    id: Uuid,
+    responses: Vec<String>,
 }
 
 /// Game telemetry of one interval (around 60 probably).
 /// Cores get added about once a second. Actions get added on demand.
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct GameTelemetry {
-    cores: Vec<(u64, ProgressionCore)>,
+    // We don't need a timestamp here because we have one implicitely.
+    // The `previous_timestamp` on `ProgressionCore` has the exact same timestamp
+    // anyways, we can just use that.
+    cores: Vec<ProgressionCore>,
     actions: Vec<(u64, usize)>,
 }
 
@@ -52,14 +55,14 @@ impl GameTelemetryManager {
     fn empty() -> Self {
         Self {
             telemetries: Vec::new(),
-            user_uuid: Uuid::new_v4(),
-            non_ok_responses: Vec::new(),
+            id: Uuid::new_v4(),
+            responses: Vec::new(),
         }
     }
 
     /// Clear the telemetries and responses, of course don't clear the UUID.
     fn clear(&mut self) {
-        self.non_ok_responses.clear();
+        self.responses.clear();
 
         if self.telemetries.len() > 1 {
             self.telemetries.drain(0..self.telemetries.len() - 1);
@@ -161,14 +164,14 @@ fn send_data_to_server(telemetry: Res<GameTelemetryManager>, mut client: BevyReq
                         timestamp(),
                         trigger.event().status()
                     );
-                    telemetry.non_ok_responses.push(msg);
+                    telemetry.responses.push(msg);
                 }
             },
         )
         .on_error(
             |trigger: Trigger<ReqwestErrorEvent>, mut telemetry: ResMut<GameTelemetryManager>| {
                 let msg = format!("[{}]: {}", timestamp(), trigger.event().0);
-                telemetry.non_ok_responses.push(msg);
+                telemetry.responses.push(msg);
             },
         );
 }
@@ -203,9 +206,7 @@ fn add_progression_core_to_telemetry_manager(
     }
 
     let index = telemetry.telemetries.len() - 1;
-    telemetry.telemetries[index]
-        .cores
-        .push((timestamp(), core.clone()));
+    telemetry.telemetries[index].cores.push(core.clone());
 }
 
 fn add_telemetry_actions(
@@ -247,27 +248,6 @@ fn add_telemetry_actions(
     *player_was_moving = player_velocity.0 != Vec2::ZERO;
 }
 
-fn debuggy(telemetry: Res<GameTelemetryManager>) {
-    let mut cores = Vec::new();
-    for t in &telemetry.telemetries {
-        cores.push(t.cores.len());
-    }
-
-    let mut actions = Vec::new();
-    for t in &telemetry.telemetries {
-        for a in &t.actions {
-            actions.push(a);
-        }
-    }
-
-    info!(
-        "{}, {:?}, {:?}",
-        telemetry.telemetries.len(),
-        cores,
-        actions
-    );
-}
-
 pub struct GameTelemetryPlugin;
 
 impl Plugin for GameTelemetryPlugin {
@@ -289,7 +269,5 @@ impl Plugin for GameTelemetryPlugin {
                     .chain()
                     .run_if(resource_exists::<GameTelemetryManager>),
             );
-
-        app.add_systems(Update, debuggy);
     }
 }
