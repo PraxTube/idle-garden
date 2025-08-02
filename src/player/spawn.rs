@@ -2,6 +2,7 @@
 use std::fs::read_to_string;
 
 use bevy::prelude::*;
+use bevy_trickfilm::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::assets::PLAYER_SAVE_FILE;
@@ -35,14 +36,18 @@ fn player_from_string(raw_player: &str) -> Vec2 {
 }
 
 fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec2) {
+    let mut animator = AnimationPlayer2D::default();
+    animator.play(assets.player_animations[0].clone()).repeat();
+
     commands.spawn((
         Player::default(),
         PLAYER_COLLISION_GROUPS,
         Velocity::default(),
         DynamicCollider::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
         StaticSensorCircle::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
-        YSort(5.0),
-        Sprite::from_image(assets.player.clone()),
+        animator,
+        YSort(12.0),
+        Sprite::from_atlas_image(assets.player.clone(), assets.player_layout.clone().into()),
         Transform::from_translation(pos.extend(0.0)),
     ));
 }

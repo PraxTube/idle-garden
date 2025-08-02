@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
+use bevy_trickfilm::prelude::*;
 
 pub const APIKEY: &str = include_str!("../../apikey.env");
 
@@ -41,6 +42,17 @@ pub const WASM_KEYS: [&str; 4] = [
 pub struct GameAssets {
     #[asset(path = "player/player.png")]
     pub player: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 48, tile_size_y = 32, columns = 12, rows = 2))]
+    pub player_layout: Handle<TextureAtlasLayout>,
+    #[asset(
+        paths(
+            "player/animations.trickfilm.ron#idle",
+            "player/animations.trickfilm.ron#run",
+        ),
+        collection(typed)
+    )]
+    pub player_animations: Vec<Handle<AnimationClip2D>>,
+
     #[asset(path = "player/slash.png")]
     pub slash: Handle<Image>,
 

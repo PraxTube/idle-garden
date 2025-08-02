@@ -17,6 +17,7 @@ pub type GameRng = rand_xoshiro::Xoshiro256PlusPlus;
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, Window, WindowMode, WindowResolution};
+use bevy_trickfilm::prelude::*;
 
 use bevy_asset_loader::prelude::*;
 #[cfg(debug_assertions)]
@@ -62,28 +63,31 @@ fn main() {
             Update,
             continue_from_bachelor_state.run_if(in_state(GameState::BachelorToggle)),
         )
-        .add_plugins((DefaultPlugins
-            .set(ImagePlugin::default_nearest())
-            .set(AssetPlugin {
-                meta_check: AssetMetaCheck::Never,
-                ..default()
-            })
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    present_mode: PresentMode::Fifo,
-                    mode: WindowMode::Windowed,
-                    resolution: WindowResolution::new(
-                        DEFAULT_WINDOW_WIDTH,
-                        DEFAULT_WINDOW_WIDTH * 9.0 / 16.0,
-                    ),
-                    fit_canvas_to_parent: true,
-                    #[cfg(all(not(debug_assertions), target_arch = "wasm32"))]
-                    canvas: Some("#game-canvas".to_string()),
+        .add_plugins((
+            DefaultPlugins
+                .set(ImagePlugin::default_nearest())
+                .set(AssetPlugin {
+                    meta_check: AssetMetaCheck::Never,
                     ..default()
-                }),
-                ..default()
-            })
-            .build(),))
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        present_mode: PresentMode::Fifo,
+                        mode: WindowMode::Windowed,
+                        resolution: WindowResolution::new(
+                            DEFAULT_WINDOW_WIDTH,
+                            DEFAULT_WINDOW_WIDTH * 9.0 / 16.0,
+                        ),
+                        fit_canvas_to_parent: true,
+                        #[cfg(all(not(debug_assertions), target_arch = "wasm32"))]
+                        canvas: Some("#game-canvas".to_string()),
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .build(),
+            Animation2DPlugin,
+        ))
         .init_state::<GameState>()
         .add_loading_state(
             LoadingState::new(GameState::AssetLoading)

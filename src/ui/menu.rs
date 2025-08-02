@@ -245,8 +245,6 @@ fn trigger_menu_action(
         return;
     };
 
-    info!("{:?}", menu_data.action);
-
     ev_menu_action.write(MenuActionEvent {
         action: menu_data.action,
     });
