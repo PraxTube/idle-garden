@@ -22,6 +22,16 @@ pub const COLLIDER_RADIUS: f32 = 2.5;
 pub const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -12.5);
 pub const DEFAULT_PLAYER_SPAWN_POS: Vec2 = Vec2::ZERO;
 
+const SCYTHE_OFFSET: Vec3 = Vec3::new(25.0, 0.0, 0.0);
+
+#[derive(Component)]
+pub struct Scythe {
+    pub previous_dir: Vec2,
+    pub delta_dir: f32,
+}
+#[derive(Component)]
+pub struct ScytheGFX;
+
 fn player_from_string(raw_player: &str) -> Vec2 {
     if raw_player.is_empty() {
         return DEFAULT_PLAYER_SPAWN_POS;
@@ -39,16 +49,37 @@ fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec
     let mut animator = AnimationPlayer2D::default();
     animator.play(assets.player_animations[0].clone()).repeat();
 
+    let root = commands
+        .spawn((
+            Player::default(),
+            PLAYER_COLLISION_GROUPS,
+            Velocity::default(),
+            DynamicCollider::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
+            StaticSensorCircle::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
+            animator,
+            YSort(12.0),
+            Sprite::from_atlas_image(assets.player.clone(), assets.player_layout.clone().into()),
+            Transform::from_translation(pos.extend(0.0)),
+        ))
+        .id();
+
+    let scythe_socket = commands
+        .spawn((
+            ChildOf(root),
+            Scythe {
+                previous_dir: Vec2::X,
+                delta_dir: 1.0,
+            },
+            Transform::default(),
+            Visibility::Inherited,
+        ))
+        .id();
+
     commands.spawn((
-        Player::default(),
-        PLAYER_COLLISION_GROUPS,
-        Velocity::default(),
-        DynamicCollider::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
-        StaticSensorCircle::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
-        animator,
-        YSort(12.0),
-        Sprite::from_atlas_image(assets.player.clone(), assets.player_layout.clone().into()),
-        Transform::from_translation(pos.extend(0.0)),
+        ChildOf(scythe_socket),
+        ScytheGFX,
+        Sprite::from_image(assets.scythe.clone()),
+        Transform::from_translation(SCYTHE_OFFSET),
     ));
 }
 

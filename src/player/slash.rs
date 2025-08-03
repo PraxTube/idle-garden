@@ -2,16 +2,16 @@ use bevy::{prelude::*, ui::RelativeCursorPosition};
 
 use crate::{
     world::{
-        utils::quat_from_vec2, Blueprint, BuildingSystemSet, ItemBought, ProgressionSystemSet,
+        utils::quat_from_vec2, BuildingSystemSet, ItemBought, ProgressionSystemSet,
         StaticSensorCircle, ZLevel, SLASH_COLLISION_GROUPS,
     },
     GameAssets, GameState,
 };
 
-use super::{GamingInput, Player};
-
-const OFFSET_DIRECTION: Vec2 = Vec2::X;
-const OFFSET_MAGNITUDE: f32 = 20.0;
+use super::{
+    spawn::{Scythe, ScytheGFX},
+    GamingInput, Player,
+};
 
 #[derive(Component)]
 struct Slash {
@@ -55,43 +55,6 @@ fn spawn_slash(
     ));
 }
 
-fn spawn_slashes(
-    mut commands: Commands,
-    assets: Res<GameAssets>,
-    gaming_input: Res<GamingInput>,
-    q_blueprints: Query<&Blueprint>,
-    q_player: Query<(&Transform, &Player)>,
-    mut ev_spawned_slash: EventWriter<SpawnedSlash>,
-) {
-    if !gaming_input.slash {
-        return;
-    }
-    if !q_blueprints.is_empty() {
-        return;
-    }
-
-    let Ok((player_transform, player)) = q_player.single() else {
-        return;
-    };
-
-    if player.is_over_ui {
-        return;
-    }
-
-    let pos = player_transform.translation.xy()
-        + OFFSET_DIRECTION.rotate(gaming_input.aim_direction) * OFFSET_MAGNITUDE;
-
-    ev_spawned_slash.write(SpawnedSlash);
-
-    spawn_slash(
-        &mut commands,
-        &assets,
-        pos,
-        quat_from_vec2(gaming_input.aim_direction),
-        true,
-    );
-}
-
 fn spawn_slash_on_item_bought(
     mut commands: Commands,
     assets: Res<GameAssets>,
@@ -132,6 +95,44 @@ fn update_player_is_over_ui(
     }
 }
 
+fn update_scythe_rotation(
+    gaming_input: Res<GamingInput>,
+    q_player: Single<&Transform, With<Player>>,
+    q_scythe: Single<(&mut Transform, &mut Scythe), Without<Player>>,
+) {
+    let player_transform = q_player.into_inner();
+    let (mut scythe_transform, mut scythe) = q_scythe.into_inner();
+
+    let dir =
+        (gaming_input.mouse_world_coords - player_transform.translation.xy()).normalize_or_zero();
+
+    scythe.delta_dir = if dir.x * scythe.previous_dir.y - dir.y * scythe.previous_dir.x <= 0.0 {
+        0.0
+    } else {
+        scythe.previous_dir.dot(dir)
+    };
+
+    scythe.previous_dir = dir;
+
+    scythe_transform.rotation = quat_from_vec2(dir);
+}
+
+fn spawn_slashes_on_scythe_move(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    q_scythe: Single<&Scythe>,
+    q_scythe_gfx: Single<&GlobalTransform, With<ScytheGFX>>,
+) {
+    let scythe = q_scythe.into_inner();
+    let scythe_gfx_transform = q_scythe_gfx.into_inner();
+
+    let pos = scythe_gfx_transform.translation().xy();
+
+    if scythe.delta_dir > 0.8 && scythe.delta_dir < 0.98 {
+        spawn_slash(&mut commands, &assets, pos, Quat::IDENTITY, false);
+    }
+}
+
 pub struct PlayerSlashPlugin;
 
 impl Plugin for PlayerSlashPlugin {
@@ -141,7 +142,8 @@ impl Plugin for PlayerSlashPlugin {
             (
                 despawn_slashes,
                 update_player_is_over_ui,
-                spawn_slashes.run_if(resource_exists::<GameAssets>),
+                update_scythe_rotation,
+                spawn_slashes_on_scythe_move,
                 spawn_slash_on_item_bought,
             )
                 .chain()

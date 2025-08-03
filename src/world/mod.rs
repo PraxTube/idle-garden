@@ -14,8 +14,8 @@ pub use debug::DebugState;
 #[cfg(debug_assertions)]
 pub use map::simulate_progression;
 pub use map::{
-    AutoSave, Blueprint, BuildingSystemSet, Flora, InitialFloraSpawned, ItemBought, MapData,
-    ProgressionCore, ProgressionSystemSet, ZLevel,
+    AutoSave, BuildingSystemSet, Flora, InitialFloraSpawned, ItemBought, MapData, ProgressionCore,
+    ProgressionSystemSet, ZLevel,
 };
 
 use bevy::prelude::*;

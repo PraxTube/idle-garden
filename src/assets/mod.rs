@@ -53,6 +53,8 @@ pub struct GameAssets {
     )]
     pub player_animations: Vec<Handle<AnimationClip2D>>,
 
+    #[asset(path = "player/scythe.png")]
+    pub scythe: Handle<Image>,
     #[asset(path = "player/slash.png")]
     pub slash: Handle<Image>,
 

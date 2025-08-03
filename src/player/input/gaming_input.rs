@@ -13,6 +13,7 @@ fn fetch_mouse_world_coords(
     mut gaming_input: ResMut<GamingInput>,
     window: Single<&Window, With<PrimaryWindow>>,
     camera: Single<(&Camera, &GlobalTransform), With<MainCamera>>,
+    mut previous_pos: Local<Vec2>,
 ) {
     if let Some(world_position) = window
         .cursor_position()
@@ -20,6 +21,9 @@ fn fetch_mouse_world_coords(
         .map(|ray| ray.origin.xy())
     {
         gaming_input.mouse_world_coords = world_position;
+        *previous_pos = world_position;
+    } else {
+        gaming_input.mouse_world_coords = *previous_pos;
     }
 }
 
