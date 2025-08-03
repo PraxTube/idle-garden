@@ -37,6 +37,7 @@ bevy = "0.16.1"
 bevy_asset_loader = { version = "0.23.0", features = ["2d"] }
 bevy_mod_reqwest = "0.19.2"
 # bevy_kira_audio = "0.23.0"
+bevy_enoki = { path = "./enoki" }
 
 bevy_trickfilm = "0.11.0"
 bevy_trickfilm_derive = "0.10.0"

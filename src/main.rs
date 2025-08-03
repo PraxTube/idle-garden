@@ -17,6 +17,7 @@ pub type GameRng = rand_xoshiro::Xoshiro256PlusPlus;
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, Window, WindowMode, WindowResolution};
+use bevy_enoki::prelude::*;
 use bevy_trickfilm::prelude::*;
 
 use bevy_asset_loader::prelude::*;
@@ -87,6 +88,7 @@ fn main() {
                 })
                 .build(),
             Animation2DPlugin,
+            EnokiPlugin,
         ))
         .init_state::<GameState>()
         .add_loading_state(

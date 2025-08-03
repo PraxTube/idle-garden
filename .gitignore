@@ -1,4 +1,6 @@
 /target
+enoki/target
+enoki_editor/target
 assets/save/*
 *.csv
 *.env
