@@ -1,16 +1,9 @@
-#[cfg(not(target_arch = "wasm32"))]
-use std::fs::read_to_string;
-
 use bevy::prelude::*;
 use bevy_trickfilm::prelude::*;
 
-#[cfg(not(target_arch = "wasm32"))]
-use crate::assets::PLAYER_SAVE_FILE;
-#[cfg(target_arch = "wasm32")]
-use crate::assets::WASM_PLAYER_KEY_STORAGE;
 use crate::{
     world::{
-        DynamicCollider, InitialFloraSpawned, StaticSensorCircle, Velocity, YSort,
+        DynamicCollider, ProgressionCore, StaticSensorCircle, Velocity, YSort,
         PLAYER_COLLISION_GROUPS,
     },
     GameAssets,
@@ -31,19 +24,6 @@ pub struct Scythe {
 }
 #[derive(Component)]
 pub struct ScytheGFX;
-
-fn player_from_string(raw_player: &str) -> Vec2 {
-    if raw_player.is_empty() {
-        return DEFAULT_PLAYER_SPAWN_POS;
-    }
-
-    let parts = raw_player
-        .split_once(',')
-        .expect("failed to split player string in local storage");
-    let x = parts.0.parse::<f32>().unwrap_or_default();
-    let y = parts.1.parse::<f32>().unwrap_or_default();
-    Vec2::new(x, y)
-}
 
 fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec2) {
     let mut animator = AnimationPlayer2D::default();
@@ -83,38 +63,8 @@ fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec
     ));
 }
 
-#[cfg(target_arch = "wasm32")]
-fn spawn_player_wasm(commands: &mut Commands, assets: &GameAssets) {
-    use web_sys::window;
-
-    let storage = window()
-        .expect("failed to get window")
-        .local_storage()
-        .expect("failed to get local storage")
-        .expect("failed to unwrap local storage");
-
-    let raw_player = storage
-        .get_item(WASM_PLAYER_KEY_STORAGE)
-        .expect("failed to get local storage item WASM key")
-        .unwrap_or_default();
-    let pos = player_from_string(&raw_player);
-
-    spawn_player_from_args(commands, assets, pos);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn spawn_player_native(commands: &mut Commands, assets: &GameAssets) {
-    let raw_player = read_to_string(PLAYER_SAVE_FILE).expect("failed to read player save file");
-    let pos = player_from_string(&raw_player);
-    spawn_player_from_args(commands, assets, pos);
-}
-
-fn spawn_player(mut commands: Commands, assets: Res<GameAssets>) {
-    #[cfg(target_arch = "wasm32")]
-    spawn_player_wasm(&mut commands, &assets);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    spawn_player_native(&mut commands, &assets);
+fn spawn_player(mut commands: Commands, assets: Res<GameAssets>, core: Res<ProgressionCore>) {
+    spawn_player_from_args(&mut commands, &assets, core.player);
 }
 
 pub struct PlayerSpawnPlugin;
@@ -125,7 +75,7 @@ impl Plugin for PlayerSpawnPlugin {
             Update,
             spawn_player.run_if(
                 resource_exists::<GameAssets>
-                    .and(resource_exists::<InitialFloraSpawned>)
+                    .and(resource_exists::<ProgressionCore>)
                     .and(run_once),
             ),
         );
