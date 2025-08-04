@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
+use bevy_enoki::prelude::*;
 use bevy_trickfilm::prelude::*;
 
 pub const APIKEY: &str = include_str!("../../apikey.env");
@@ -37,6 +38,8 @@ pub const WASM_KEYS: [&str; 4] = [
     WASM_PLAYER_KEY_STORAGE,
     WASM_GAME_TELEMETRY_KEY_STORAGE,
 ];
+
+const CUT_GRASS_PARTICLES_FILE: &str = "effects/cut_grass.ron";
 
 #[derive(AssetCollection, Resource)]
 pub struct GameAssets {
@@ -115,6 +118,10 @@ pub struct GameAssets {
     #[asset(path = "map/fence_horizontal.png")]
     pub fence_horizontal: Handle<Image>,
 
+    // --- EFFECTS ---
+    #[asset(path = "effects/grass_snippet.png")]
+    pub grass_snippet: Handle<Image>,
+
     // --- SHADERS ---
     #[asset(path = "shaders/discrete_sine.png")]
     pub discrete_sine_texture: Handle<Image>,
@@ -132,4 +139,31 @@ pub struct GameAssets {
     // --- FONTS ---
     #[asset(path = "fonts/PressStart2P.ttf")]
     pub pixel_font: Handle<Font>,
+}
+
+#[derive(Resource)]
+pub struct EffectAssets {
+    pub cut_grass_material: Handle<SpriteParticle2dMaterial>,
+    pub cut_grass_particles: Handle<Particle2dEffect>,
+}
+
+impl FromWorld for EffectAssets {
+    fn from_world(world: &mut World) -> Self {
+        let testy_particles = world.load_asset(CUT_GRASS_PARTICLES_FILE);
+        let assets = world
+            .get_resource::<GameAssets>()
+            .expect("failed to get GameAssets, must be ready at this point");
+
+        let handle = assets.grass_snippet.clone();
+
+        let default_particle_material = world
+            .get_resource_mut::<Assets<SpriteParticle2dMaterial>>()
+            .expect("failed to get Assets")
+            .add(SpriteParticle2dMaterial::from_texture(handle));
+
+        Self {
+            cut_grass_material: default_particle_material,
+            cut_grass_particles: testy_particles,
+        }
+    }
 }

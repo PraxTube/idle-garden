@@ -15,6 +15,7 @@ use wasm_bindgen::prelude::*;
 
 pub use building::{Blueprint, BuildingSystemSet};
 pub use flora::{Flora, InitialFloraSpawned};
+pub use grass::CutTallGrass;
 use telemetry::GameTelemetryManager;
 
 use bevy::{
@@ -28,7 +29,6 @@ use crate::assets::{GAME_TELEMETRY_FILE, MAP_DATA_FILE, PLAYER_SAVE_FILE, PROGRE
 use crate::assets::{WASM_KEYS, WASM_MAP_DATA_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE};
 
 use flora::FloraData;
-use grass::CutTallGrass;
 use serde::{Deserialize, Serialize};
 
 use crate::{

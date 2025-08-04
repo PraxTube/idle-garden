@@ -1,0 +1,7 @@
+web/*.gz
+web/*.js
+web/*.wasm
+!web/main.js
+build.sh
+target/
+dist

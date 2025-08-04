@@ -11,7 +11,7 @@ mod player;
 mod ui;
 mod world;
 
-pub use assets::GameAssets;
+pub use assets::{EffectAssets, GameAssets};
 pub type GameRng = rand_xoshiro::Xoshiro256PlusPlus;
 
 use bevy::asset::AssetMetaCheck;
@@ -94,7 +94,8 @@ fn main() {
         .add_loading_state(
             LoadingState::new(GameState::AssetLoading)
                 .continue_to_state(GameState::BachelorToggle)
-                .load_collection::<GameAssets>(),
+                .load_collection::<GameAssets>()
+                .finally_init_resource::<EffectAssets>(),
         )
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_plugins((ui::UiPlugin, world::WorldPlugin, player::PlayerPlugin))

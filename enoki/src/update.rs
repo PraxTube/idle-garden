@@ -147,7 +147,6 @@ pub(crate) fn update_spawner(
 }
 
 fn create_particle(effect: &Particle2dEffect, transform: &Transform) -> Particle {
-    // direction
     let direction = effect
         .direction
         .as_ref()
@@ -157,13 +156,11 @@ fn create_particle(effect: &Particle2dEffect, transform: &Transform) -> Particle
     // apply local rotation
     let direction = direction.rotate(transform.right().truncate());
 
-    // speed
     let speed = effect
         .linear_speed
         .as_ref()
         .map(|s| s.rand())
         .unwrap_or_default();
-    // angular
     let angular = effect
         .angular_speed
         .as_ref()
@@ -214,6 +211,7 @@ fn create_particle(effect: &Particle2dEffect, transform: &Transform) -> Particle
 
     transform.translation += match effect.emission_shape {
         EmissionShape::Point => Vec3::ZERO,
+        // TODO: Try optimizing this
         EmissionShape::Circle(radius) => {
             Vec3::new(rand::random::<f32>() - 0.5, rand::random::<f32>() - 0.5, 0.)
                 .normalize_or_zero()
@@ -247,6 +245,9 @@ fn update_particle(particle: &mut Particle, effect: &Particle2dEffect, delta: f3
 
     *rot_velo = *rot_velo - progress * particle.angular_damp * *rot_velo * delta
         + progress * particle.angular_acceleration * *rot_velo * delta;
+
+    particle.gravity_speed =
+        particle.gravity_speed + particle.gravity_speed * progress * delta * 9.81;
 
     if let Some(scale_curve) = effect.scale_curve.as_ref() {
         particle.transform.scale = Vec3::splat(scale_curve.lerp(progress));

@@ -3,6 +3,7 @@ pub mod utils;
 mod camera;
 mod collisions;
 mod debug;
+mod effects;
 mod map;
 mod state;
 
@@ -32,6 +33,7 @@ impl Plugin for WorldPlugin {
             collisions::WorldCollisionPlugin,
             state::WorldStatePlugin,
             map::MapPlugin,
+            effects::WorldEffectsPlugin,
         ));
     }
 }
