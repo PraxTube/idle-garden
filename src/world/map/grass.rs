@@ -31,7 +31,6 @@ use super::{
 // in other words when the grass is not moving through player shake.
 const TIME_TILL_SINE_RESET: f32 = 1.5;
 const OFFLINE_PROGRESSION_NUMBER_POP_UP_OFFSET: Vec2 = Vec2::new(0.0, 20.0);
-const CUT_TALL_GRASS_POINTS: u64 = 1;
 
 const QUAD_MAX_SHIFT_OFFSET: f32 = 3.0;
 const QUAD_OFFSETS: [Vec2; 4] = [
@@ -272,33 +271,6 @@ fn spawn_number_pop_up(
     ));
 }
 
-fn spawn_number_pop_ups(
-    mut commands: Commands,
-    assets: Res<GameAssets>,
-    mut core: ResMut<ProgressionCore>,
-    mut ev_cut_tall_grass: EventReader<CutTallGrass>,
-) {
-    for ev in ev_cut_tall_grass.read() {
-        debug_assert!(core.points <= core.points_cap);
-        if core.points == core.points_cap {
-            continue;
-        }
-
-        core.points += CUT_TALL_GRASS_POINTS;
-
-        spawn_number_pop_up(
-            &mut commands,
-            &assets,
-            ev.pos,
-            format!("+{}", CUT_TALL_GRASS_POINTS),
-            Color::WHITE.with_alpha(1.0),
-            NumberPopUp::default(),
-            80.0,
-            0.0,
-        );
-    }
-}
-
 /// We spawn the offline progress number pop up in here because it's convenient.
 /// It's not clean at all, but I don't care, it's easy to do right now.
 fn spawn_offline_progress_number_pop_up(
@@ -343,7 +315,7 @@ fn spawn_item_cost_number_pop_up_on_item_bought(
             ev.pos,
             format!("-{}", ev.cost),
             RED.with_alpha(1.0).into(),
-            NumberPopUp::new(2.5, 3.0),
+            NumberPopUp::new(4.5, 2.0),
             100.0,
             1000.0,
         );
@@ -434,9 +406,6 @@ impl Plugin for MapGrassPlugin {
                 (
                     trigger_cut_tall_grass_event,
                     despawn_tall_grass,
-                    spawn_number_pop_ups.run_if(
-                        resource_exists::<GameAssets>.and(resource_exists::<ProgressionCore>),
-                    ),
                     spawn_offline_progress_number_pop_up.run_if(
                         in_state(GameState::Gaming).and(resource_exists::<ProgressionCore>),
                     ),

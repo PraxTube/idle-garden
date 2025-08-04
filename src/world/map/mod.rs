@@ -49,6 +49,8 @@ const DEFAULT_POINTS_CAP: u64 = 800;
 const POINTS_CAP_INCEASE_PER_SILO: u64 = 300;
 const AUTO_SAVE_TIME_INTERVAL: u64 = 60;
 
+const TALL_GRASS_POINTS: u64 = 1;
+
 pub struct MapPlugin;
 
 impl Plugin for MapPlugin {
@@ -98,6 +100,7 @@ impl Plugin for MapPlugin {
                 update_progression_core_on_item_bought,
                 update_points_per_second,
                 update_points_cap,
+                increase_points_on_cut_tall_grass,
                 add_points.run_if(on_timer(Duration::from_secs(1))),
                 reset_game_state,
                 save_game_state.run_if(on_event::<AutoSave>),
@@ -620,6 +623,7 @@ fn update_points_cap(mut core: ResMut<ProgressionCore>) {
 }
 
 fn add_points(mut core: ResMut<ProgressionCore>) {
+    debug_assert!(core.points <= core.points_cap);
     core.points = (core.points + core.pps as u64).min(core.points_cap);
 }
 
@@ -809,6 +813,16 @@ fn add_offline_progression(mut core: ResMut<ProgressionCore>, map_data: Res<MapD
     let new_points = (pps * diff).min(core.points_cap - core.points);
     core.points += new_points;
     core.offline_progression = new_points;
+}
+
+fn increase_points_on_cut_tall_grass(
+    mut core: ResMut<ProgressionCore>,
+    mut ev_cut_tall_grass: EventReader<CutTallGrass>,
+) {
+    for _ in ev_cut_tall_grass.read() {
+        debug_assert!(core.points <= core.points_cap);
+        core.points = (core.points + TALL_GRASS_POINTS).min(core.points_cap);
+    }
 }
 
 #[cfg(debug_assertions)]
