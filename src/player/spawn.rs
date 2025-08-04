@@ -22,7 +22,7 @@ pub const COLLIDER_RADIUS: f32 = 2.5;
 pub const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -12.5);
 pub const DEFAULT_PLAYER_SPAWN_POS: Vec2 = Vec2::ZERO;
 
-const SCYTHE_OFFSET: Vec3 = Vec3::new(25.0, 0.0, 0.0);
+const SCYTHE_OFFSET: Vec3 = Vec3::new(-25.0, 0.0, 0.0);
 
 #[derive(Component)]
 pub struct Scythe {
@@ -67,7 +67,7 @@ fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec
         .spawn((
             ChildOf(root),
             Scythe {
-                previous_dir: Vec2::X,
+                previous_dir: Vec2::NEG_X,
                 delta_dir: 1.0,
             },
             Transform::default(),

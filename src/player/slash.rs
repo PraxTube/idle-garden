@@ -104,9 +104,10 @@ fn update_scythe_rotation(
     let (mut scythe_transform, mut scythe) = q_scythe.into_inner();
 
     let dir =
-        (gaming_input.mouse_world_coords - player_transform.translation.xy()).normalize_or_zero();
+        -(gaming_input.mouse_world_coords - player_transform.translation.xy()).normalize_or_zero();
 
-    scythe.delta_dir = if dir.x * scythe.previous_dir.y - dir.y * scythe.previous_dir.x <= 0.0 {
+    // This is essentialy the cross product (just for 2D).
+    scythe.delta_dir = if dir.y * scythe.previous_dir.x - dir.x * scythe.previous_dir.y <= 0.0 {
         0.0
     } else {
         scythe.previous_dir.dot(dir)
