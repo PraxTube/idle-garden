@@ -3,14 +3,19 @@ use bevy::prelude::*;
 use crate::{
     player::GamingInput,
     ui::{MenuAction, MenuActionEvent},
+    world::map::Blueprint,
     GameState,
 };
 
 fn switch_to_menu_state(
     mut next_state: ResMut<NextState<GameState>>,
     gaming_input: Res<GamingInput>,
+    q_blueprint: Query<&Blueprint>,
 ) {
     if !gaming_input.menu {
+        return;
+    }
+    if !q_blueprint.is_empty() {
         return;
     }
     next_state.set(GameState::Menu);
