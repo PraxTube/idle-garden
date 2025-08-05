@@ -10,6 +10,7 @@ use super::Consent;
 
 const DEFAULT_FONT_SIZE: f32 = 25.0;
 const RESET_UNLOCK_TIME: f32 = 3.0;
+const DISCORD_LINK: &str = "https://discord.gg/2h7dncQNTr";
 
 #[derive(Resource, Default)]
 struct MenuNavigator {
@@ -29,6 +30,7 @@ pub enum MenuAction {
     Reset,
     CancelReset,
     UnlockReset,
+    Discord,
 }
 #[derive(Component, Debug)]
 struct MenuData {
@@ -49,6 +51,12 @@ pub struct MenuActionEvent {
     pub action: MenuAction,
 }
 
+#[derive(Component)]
+struct DiscordButton {
+    timer: Timer,
+    delay: Timer,
+}
+
 impl MenuAction {
     fn string(self) -> String {
         let s = match self {
@@ -59,6 +67,7 @@ impl MenuAction {
             Self::Reset => "Reset",
             Self::CancelReset => "Cancel",
             Self::UnlockReset => "SHOULD NEVER SEE THIS",
+            Self::Discord => "SHOULD NEVER SEE THIS",
         };
 
         s.to_string()
@@ -83,6 +92,35 @@ fn spawn_button(
                 ..default()
             },
             TextColor(Color::WHITE),
+        ))
+        .id()
+}
+
+fn spawn_discord_button(commands: &mut Commands, assets: &Res<GameAssets>) -> Entity {
+    commands
+        .spawn((
+            MenuData {
+                action: MenuAction::Discord,
+            },
+            DiscordButton {
+                timer: Timer::from_seconds(0.5, TimerMode::Once),
+                delay: Timer::from_seconds(0.5, TimerMode::Once),
+            },
+            Button,
+            ZIndex(102),
+            Node {
+                width: Val::Px(100.0),
+                height: Val::Px(100.0),
+                bottom: Val::Px(20.0),
+                right: Val::Px(20.0),
+                position_type: PositionType::Absolute,
+                ..default()
+            },
+            ImageNode {
+                image: assets.discord_button.clone(),
+                color: Color::WHITE.with_alpha(0.0),
+                ..default()
+            },
         ))
         .id()
 }
@@ -189,6 +227,7 @@ fn spawn_buttons(commands: &mut Commands, font: Handle<Font>, consent: bool) -> 
 fn spawn_menu(mut commands: Commands, assets: Res<GameAssets>, consent: Res<Consent>) {
     let background = spawn_background(&mut commands, &assets);
     let button_container = spawn_buttons(&mut commands, assets.pixel_font.clone(), consent.0);
+    let discord_button = spawn_discord_button(&mut commands, &assets);
 
     commands
         .spawn((
@@ -200,7 +239,7 @@ fn spawn_menu(mut commands: Commands, assets: Res<GameAssets>, consent: Res<Cons
                 ..default()
             },
         ))
-        .add_children(&[background, button_container]);
+        .add_children(&[background, button_container, discord_button]);
 }
 
 fn despawn_menu(
@@ -250,23 +289,32 @@ fn trigger_menu_action(
     });
 }
 
-fn reset_all_highlights(mut q_text_colors: Query<&mut TextColor, With<MenuData>>) {
+fn reset_all_highlights(
+    mut q_text_colors: Query<&mut TextColor, With<MenuData>>,
+    mut q_images: Query<&mut ImageNode, With<MenuData>>,
+) {
     for mut color in &mut q_text_colors {
         color.0 = Color::WHITE;
+    }
+    for mut image in &mut q_images {
+        image.color = Color::WHITE;
     }
 }
 
 fn highlight_item(
     navigator: Res<MenuNavigator>,
     mut q_text_colors: Query<&mut TextColor, With<MenuData>>,
+    mut q_images: Query<&mut ImageNode, With<MenuData>>,
 ) {
     let Some(highlighted_button) = navigator.highlighted_item else {
         return;
     };
 
-    // Highlight color
     if let Ok(mut color) = q_text_colors.get_mut(highlighted_button) {
         color.0 = RED.into();
+    }
+    if let Ok(mut image) = q_images.get_mut(highlighted_button) {
+        image.color = RED.into();
     }
 }
 
@@ -600,6 +648,61 @@ fn toggle_send_data_button(
     }
 }
 
+fn animate_discord_button(
+    time: Res<Time>,
+    mut q_discord_button: Query<(&mut ImageNode, &mut DiscordButton)>,
+) {
+    let Ok((mut image, mut discord_button)) = q_discord_button.single_mut() else {
+        return;
+    };
+
+    if !discord_button.delay.finished() {
+        image.color.set_alpha(0.0);
+        discord_button.delay.tick(time.delta());
+        return;
+    }
+
+    discord_button.timer.tick(time.delta());
+
+    if discord_button.timer.just_finished() {
+        image.color.set_alpha(1.0);
+        return;
+    }
+
+    if discord_button.timer.finished() {
+        return;
+    }
+
+    let alpha = discord_button.timer.elapsed_secs() / discord_button.timer.duration().as_secs_f32();
+    image.color.set_alpha(alpha);
+}
+
+fn open_discord_link(mut ev_menu_action: EventReader<MenuActionEvent>) {
+    if !ev_menu_action
+        .read()
+        .any(|ev| ev.action == MenuAction::Discord)
+    {
+        return;
+    }
+
+    let err_str = "failed to open discord link in default browser";
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if open::that(DISCORD_LINK).is_err() {
+        error!(err_str);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    if let Some(win) = web_sys::window() {
+        if win
+            .open_with_url_and_target(DISCORD_LINK, "_blank")
+            .is_err()
+        {
+            error!(err_str);
+        }
+    }
+}
+
 pub struct UiMenuPlugin;
 
 impl Plugin for UiMenuPlugin {
@@ -624,6 +727,8 @@ impl Plugin for UiMenuPlugin {
                     update_reset_pop_up_timer_text,
                     remove_reset_pop_up_timer_component,
                     remove_non_interactable_from_reset_button,
+                    animate_discord_button,
+                    open_discord_link,
                     set_buttons_active_on_cancel_reset,
                     set_buttons_inactive_on_reset_pop_up,
                 )

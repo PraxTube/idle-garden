@@ -86,6 +86,9 @@ pub struct GameAssets {
     #[asset(path = "ui/reset_pop_up_background.png")]
     pub reset_pop_up_background: Handle<Image>,
 
+    #[asset(path = "ui/discord.png")]
+    pub discord_button: Handle<Image>,
+
     // --- MAP ---
     #[asset(path = "map/grass.png")]
     pub grass: Handle<Image>,
