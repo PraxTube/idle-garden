@@ -35,5 +35,8 @@ impl Plugin for WorldPlugin {
             map::MapPlugin,
             effects::WorldEffectsPlugin,
         ));
+
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_systems(Update, utils::save_screenshot);
     }
 }

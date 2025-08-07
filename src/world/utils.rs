@@ -56,6 +56,23 @@ pub fn format_money_string(amount: u64) -> String {
     "$".to_string() + &format_money_string_raw(amount)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub fn save_screenshot(
+    mut commands: Commands,
+    input: Res<ButtonInput<KeyCode>>,
+    mut counter: Local<u32>,
+) {
+    use bevy::render::view::screenshot::{save_to_disk, Screenshot};
+
+    if input.just_pressed(KeyCode::F12) {
+        let path = format!("./screenshot-{}.png", *counter);
+        *counter += 1;
+        commands
+            .spawn(Screenshot::primary_window())
+            .observe(save_to_disk(path));
+    }
+}
+
 #[test]
 fn validate_money_format_string() {
     assert_eq!(format_money_string_raw(24_300_001), "24.3M".to_string());
