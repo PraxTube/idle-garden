@@ -56,25 +56,30 @@ fn move_running(
 fn animate_player(
     assets: Res<GameAssets>,
     gaming_input: Res<GamingInput>,
-    mut q_player: Query<(&mut Sprite, &mut AnimationPlayer2D), With<Player>>,
+    q_player: Single<&Children, With<Player>>,
+    mut q_sprites: Query<(&mut Sprite, &mut AnimationPlayer2D)>,
 ) {
-    let Ok((mut sprite, mut animator)) = q_player.single_mut() else {
-        return;
-    };
+    let children = q_player.into_inner();
 
-    let animation = if gaming_input.move_direction == Vec2::ZERO {
-        assets.player_animations[0].clone()
-    } else {
-        assets.player_animations[1].clone()
-    };
+    for child in children {
+        let Ok((mut sprite, mut animator)) = q_sprites.get_mut(*child) else {
+            continue;
+        };
 
-    if gaming_input.move_direction.x > 0.0 {
-        sprite.flip_x = false;
-    } else if gaming_input.move_direction.x < 0.0 {
-        sprite.flip_x = true;
+        let animation = if gaming_input.move_direction == Vec2::ZERO {
+            assets.player_animations[0].clone()
+        } else {
+            assets.player_animations[1].clone()
+        };
+
+        if gaming_input.move_direction.x > 0.0 {
+            sprite.flip_x = false;
+        } else if gaming_input.move_direction.x < 0.0 {
+            sprite.flip_x = true;
+        }
+
+        animator.play(animation).repeat();
     }
-
-    animator.play(animation).repeat();
 }
 
 pub struct PlayerMovementPlugin;

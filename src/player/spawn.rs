@@ -36,12 +36,18 @@ fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec
             Velocity::default(),
             DynamicCollider::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
             StaticSensorCircle::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
-            animator,
             YSort(12.0),
-            Sprite::from_atlas_image(assets.player.clone(), assets.player_layout.clone().into()),
+            Visibility::Inherited,
             Transform::from_translation(pos.extend(0.0)),
         ))
         .id();
+
+    commands.spawn((
+        ChildOf(root),
+        Transform::from_scale(Vec3::splat(0.5)),
+        animator,
+        Sprite::from_atlas_image(assets.player.clone(), assets.player_layout.clone().into()),
+    ));
 
     let scythe_socket = commands
         .spawn((

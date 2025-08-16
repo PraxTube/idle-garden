@@ -40,7 +40,7 @@ const CUT_GRASS_PARTICLES_FILE: &str = "effects/cut_grass.ron";
 pub struct GameAssets {
     #[asset(path = "player/player.png")]
     pub player: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 48, tile_size_y = 32, columns = 12, rows = 2))]
+    #[asset(texture_atlas_layout(tile_size_x = 64, tile_size_y = 64, columns = 12, rows = 2,))]
     pub player_layout: Handle<TextureAtlasLayout>,
     #[asset(
         paths(
