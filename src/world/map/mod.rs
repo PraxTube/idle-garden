@@ -49,6 +49,7 @@ const TALL_GRASS_CELL_VALUE: u16 = u16::MAX - 2;
 
 const DEFAULT_POINTS_CAP: u64 = 800;
 const POINTS_CAP_INCEASE_PER_SILO: u64 = 300;
+pub const POINTS_CAP_COST_INCREASE_PER_SILO: u64 = 200;
 const AUTO_SAVE_TIME_INTERVAL: u64 = 60;
 
 const TALL_GRASS_POINTS: u64 = 1;
@@ -148,6 +149,7 @@ pub struct ProgressionCore {
     pub points_cap: u64,
     pub pps: u32,
     pub flora: Vec<u16>,
+    pub silos: u64,
     pub player: Vec2,
 }
 
@@ -186,6 +188,7 @@ impl ProgressionCore {
             points_cap: DEFAULT_POINTS_CAP,
             pps: 0,
             flora: vec![0; Flora::len()],
+            silos: 0,
             player: Vec2::ZERO,
         }
     }
@@ -198,8 +201,7 @@ impl ProgressionCore {
     }
 
     fn update_points_cap(&mut self) {
-        self.points_cap = DEFAULT_POINTS_CAP
-            + self.flora[Flora::Silo.index()] as u64 * POINTS_CAP_INCEASE_PER_SILO;
+        self.points_cap = DEFAULT_POINTS_CAP + self.silos * POINTS_CAP_INCEASE_PER_SILO;
     }
 }
 
@@ -827,11 +829,12 @@ pub fn simulate_progression() {
         (pps as f32) / (cost as f32)
     }
 
-    fn get_next_item_index(core: &ProgressionCore, flora_data: &[FloraData]) -> Option<usize> {
-        if core.points
-            >= flora_data[Flora::Silo.index()].cost(core.flora[Flora::Silo.index()].into()) as u64
-        {
-            return Some(Flora::Silo.index());
+    fn get_next_item_index(core: &mut ProgressionCore, flora_data: &[FloraData]) -> Option<usize> {
+        let silo_cost = POINTS_CAP_COST_INCREASE_PER_SILO * core.silos;
+        if core.points >= silo_cost {
+            core.silos += 1;
+            core.points -= silo_cost;
+            return None;
         }
 
         let mut best_index = usize::MAX;
@@ -873,7 +876,7 @@ pub fn simulate_progression() {
         core.update_points_cap();
         core.points = (core.points + core.pps as u64).min(core.points_cap);
 
-        let Some(index) = get_next_item_index(&core, &map_data.flora_data) else {
+        let Some(index) = get_next_item_index(&mut core, &map_data.flora_data) else {
             continue;
         };
 
@@ -984,8 +987,5 @@ fn validate_flora_len_matches_json_data() {
 fn validate_silo_points_cap_increases_fast_enough() {
     let map_data = MapData::empty();
 
-    assert!(
-        POINTS_CAP_INCEASE_PER_SILO
-            >= (map_data.flora_data[Flora::Silo.index()].cost_growth_factor).round() as u64
-    )
+    assert!(POINTS_CAP_INCEASE_PER_SILO >= POINTS_CAP_COST_INCREASE_PER_SILO)
 }

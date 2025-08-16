@@ -46,7 +46,6 @@ pub enum Flora {
     Sunflower,
     Tree,
     SwampTree,
-    Silo,
 }
 
 /// This is used as an Event, but because Events are a little more boiler plate I opted to use just
@@ -78,7 +77,7 @@ impl Flora {
     }
 
     fn last() -> Self {
-        Flora::Silo
+        Flora::SwampTree
     }
 
     pub fn len() -> usize {

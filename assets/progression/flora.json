@@ -64,16 +64,5 @@
     "gfx_offset": [0, 40],
     "collider_size": [8, 8],
     "size_on_grid": [1, 1]
-  },
-  "Silo": {
-    "base_cost": 800,
-    "cost_growth_factor": 300.0,
-    "exponential_growth": false,
-    "pps": 0,
-    "tree_shader": false,
-    "ysort": 0,
-    "gfx_offset": [0, 8],
-    "collider_size": [8, 8],
-    "size_on_grid": [1, 1]
   }
 }

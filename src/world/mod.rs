@@ -16,7 +16,7 @@ pub use debug::DebugState;
 pub use map::simulate_progression;
 pub use map::{
     AutoSave, BuildingSystemSet, Flora, ItemBought, MapData, ProgressionCore, ProgressionSystemSet,
-    ZLevel,
+    ZLevel, POINTS_CAP_COST_INCREASE_PER_SILO,
 };
 
 use bevy::prelude::*;

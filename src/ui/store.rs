@@ -264,11 +264,7 @@ fn handle_button_interaction(
     }
 }
 
-fn highlight_item(
-    store_page: Res<StorePageItems>,
-    q_navigator: Query<&Navigator>,
-    mut q_items: Query<(&mut ImageNode, &StoreItem)>,
-) {
+fn highlight_item(q_navigator: Query<&Navigator>, mut q_items: Query<&mut ImageNode>) {
     let Ok(navigator) = q_navigator.single() else {
         return;
     };
@@ -276,12 +272,8 @@ fn highlight_item(
         return;
     };
 
-    let Ok((mut image, item)) = q_items.get_mut(highlighted_item) else {
+    let Ok(mut image) = q_items.get_mut(highlighted_item) else {
         error!("highlighted item doesn't match with any of the item query, should never happen!");
-        return;
-    };
-
-    if !store_page.is_affordable[item.index] {
         return;
     };
 
@@ -428,7 +420,6 @@ fn update_store_page_items(mut store_page: ResMut<StorePageItems>) {
     store_page.items[1] = Flora::Raddish;
     store_page.items[2] = Flora::Carrot;
     store_page.items[3] = Flora::SwampTree;
-    store_page.items[4] = Flora::Silo;
     store_page.items[6] = Flora::Sunflower;
     store_page.items[7] = Flora::Tree;
 }
