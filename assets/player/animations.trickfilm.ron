@@ -5,6 +5,19 @@
 	),
 	"run": (
 		keyframes: KeyframesRange((start: 12, end: 20)),
-		duration: 0.7,
+		duration: 0.8,
+		events: {
+			2: {
+				"idle_garden::assets::events::PlayerFootstepEvent": (
+                    right_foot: true,
+                )
+			},
+			6: {
+				"idle_garden::assets::events::PlayerFootstepEvent": (
+                    right_foot: false,
+                )
+			},
+		},
+
 	),
 }

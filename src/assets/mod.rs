@@ -1,3 +1,7 @@
+mod events;
+
+pub use events::PlayerFootstepEvent;
+
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_enoki::prelude::*;
@@ -35,6 +39,14 @@ pub const WASM_KEYS: [&str; 3] = [
 ];
 
 const CUT_GRASS_PARTICLES_FILE: &str = "effects/cut_grass.ron";
+
+pub struct GameAssetsPlugin;
+
+impl Plugin for GameAssetsPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(events::GameAssetsEventsPlugin);
+    }
+}
 
 #[derive(AssetCollection, Resource)]
 pub struct GameAssets {
@@ -144,6 +156,8 @@ pub struct GameAssets {
         collection(typed)
     )]
     pub bgms: Vec<Handle<AudioSource>>,
+    #[asset(path = "audio/player_footstep.ogg")]
+    pub player_footstep: Handle<AudioSource>,
 
     // --- FONTS ---
     #[asset(path = "fonts/PressStart2P.ttf")]

@@ -83,7 +83,8 @@ impl Plugin for UiAutoSaveIconPlugin {
                 spawn_auto_save_icon.run_if(on_event::<AutoSave>),
                 animate_auto_save_icon,
             )
-                .chain(),
+                .chain()
+                .run_if(resource_exists::<GameAssets>),
         );
     }
 }

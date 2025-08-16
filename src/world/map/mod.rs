@@ -153,6 +153,7 @@ pub struct ProgressionCore {
     pub silos: u64,
     pub player: Vec2,
     pub music: bool,
+    pub sound: bool,
 }
 
 #[derive(Resource)]
@@ -193,6 +194,7 @@ impl ProgressionCore {
             silos: 0,
             player: Vec2::ZERO,
             music: true,
+            sound: true,
         }
     }
 
@@ -832,6 +834,12 @@ fn update_music_on_core(
         }
         if ev.action == MenuAction::MusicOff {
             core.music = true;
+        }
+        if ev.action == MenuAction::SoundOn {
+            core.sound = false;
+        }
+        if ev.action == MenuAction::SoundOff {
+            core.sound = true;
         }
     }
 }

@@ -99,6 +99,7 @@ fn main() {
     )
     .insert_resource(ClearColor(BACKGROUND_COLOR))
     .add_plugins((
+        assets::GameAssetsPlugin,
         ui::UiPlugin,
         audio::GameAudioPlugin,
         world::WorldPlugin,

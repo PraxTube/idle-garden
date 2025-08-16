@@ -4,9 +4,10 @@ use bevy::{
 };
 use rand::{thread_rng, Rng};
 
-use crate::{world::ProgressionCore, GameAssets};
+use crate::{assets::PlayerFootstepEvent, world::ProgressionCore, GameAssets};
 
-const DEFAULT_VOLUME: f32 = 0.05;
+const DEFAULT_MUSIC_VOLUME: f32 = 0.05;
+const DEFAULT_SOUND_VOLUME: f32 = 0.3;
 const MIN_SONG_DURATION: f32 = 180.0;
 const MAX_SONG_DURATION: f32 = 300.0;
 
@@ -29,6 +30,8 @@ impl Plugin for GameAudioPlugin {
                 fade_out,
                 change_to_next_song,
                 change_fade_on_core_music,
+                spawn_player_footstep_sound,
+                silence_all_sounds,
             )
                 .chain()
                 .run_if(resource_exists::<GameAssets>),
@@ -45,6 +48,8 @@ struct Bgm {
     current_song_index: usize,
     is_active: bool,
 }
+#[derive(Component)]
+struct Sound;
 
 fn spawn_bgm(mut commands: Commands, assets: Res<GameAssets>, core: Res<ProgressionCore>) {
     let mut rng = thread_rng();
@@ -84,11 +89,11 @@ fn fade_in(time: Res<Time>, q_bgm: Single<(&mut AudioSink, &mut Bgm)>) {
     debug_assert!(!bgm.fade_out);
 
     let current_volume = audio.volume().to_linear();
-    let new_volume = current_volume + DEFAULT_VOLUME * time.delta_secs() / bgm.fade_time;
+    let new_volume = current_volume + DEFAULT_MUSIC_VOLUME * time.delta_secs() / bgm.fade_time;
     audio.set_volume(Volume::Linear(new_volume));
-    if new_volume >= DEFAULT_VOLUME {
+    if new_volume >= DEFAULT_MUSIC_VOLUME {
         bgm.fade_in = false;
-        audio.set_volume(Volume::Linear(DEFAULT_VOLUME));
+        audio.set_volume(Volume::Linear(DEFAULT_MUSIC_VOLUME));
     }
 }
 
@@ -107,12 +112,12 @@ fn fade_out(
     debug_assert!(!bgm.fade_in);
 
     let current_volume = audio.volume().to_linear();
-    let new_volume = current_volume - DEFAULT_VOLUME * time.delta_secs() / bgm.fade_time;
+    let new_volume = current_volume - DEFAULT_MUSIC_VOLUME * time.delta_secs() / bgm.fade_time;
     audio.set_volume(Volume::Linear(new_volume));
     if new_volume <= 0.0 {
         bgm.fade_out = false;
         bgm.fade_in = true;
-        bgm.fade_time = 5.0;
+        bgm.fade_time = 10.0;
         audio.set_volume(Volume::SILENT);
 
         let mut rng = thread_rng();
@@ -157,13 +162,55 @@ fn change_fade_on_core_music(core: Res<ProgressionCore>, q_bgm: Single<&mut Bgm>
     if core.music != bgm.is_active {
         bgm.is_active = core.music;
         if core.music {
-            bgm.fade_time = 20.0;
+            bgm.fade_time = 10.0;
             bgm.fade_in = true;
             bgm.fade_out = false;
         } else {
-            bgm.fade_time = 1.0;
+            bgm.fade_time = 0.5;
             bgm.fade_out = true;
             bgm.fade_in = false;
         }
+    }
+}
+
+fn spawn_player_footstep_sound(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    core: Res<ProgressionCore>,
+    mut ev_player_footstep: EventReader<PlayerFootstepEvent>,
+) {
+    if ev_player_footstep.is_empty() {
+        return;
+    }
+    ev_player_footstep.clear();
+
+    if !core.sound {
+        return;
+    }
+
+    let mut rng = thread_rng();
+
+    commands.spawn((
+        Sound,
+        AudioPlayer(assets.player_footstep.clone()),
+        PlaybackSettings {
+            mode: PlaybackMode::Despawn,
+            speed: rng.gen_range(0.7..1.3),
+            volume: Volume::Linear(DEFAULT_SOUND_VOLUME * rng.gen_range(0.8..1.0)),
+            ..default()
+        },
+    ));
+}
+
+fn silence_all_sounds(
+    core: Res<ProgressionCore>,
+    mut q_sounds: Query<&mut AudioSink, With<Sound>>,
+) {
+    if core.sound {
+        return;
+    }
+
+    for mut audio in &mut q_sounds {
+        audio.set_volume(Volume::SILENT);
     }
 }
