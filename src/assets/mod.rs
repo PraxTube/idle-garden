@@ -134,6 +134,17 @@ pub struct GameAssets {
     #[asset(path = "shaders/quaternary_clouds_noise.png")]
     pub quaternary_clouds_noise_texture: Handle<Image>,
 
+    // --- AUDIO ---
+    #[asset(
+        paths(
+            "audio/music/fireflies.ogg",
+            "audio/music/new_life.ogg",
+            "audio/music/frog_pond.ogg"
+        ),
+        collection(typed)
+    )]
+    pub bgms: Vec<Handle<AudioSource>>,
+
     // --- FONTS ---
     #[asset(path = "fonts/PressStart2P.ttf")]
     pub pixel_font: Handle<Font>,

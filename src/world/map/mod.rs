@@ -104,6 +104,7 @@ impl Plugin for MapPlugin {
                 update_progression_core_on_item_bought,
                 update_points_per_second,
                 update_points_cap,
+                update_music_on_core,
                 increase_points_on_cut_tall_grass,
                 add_points.run_if(on_timer(Duration::from_secs(1))),
                 reset_game_state,
@@ -151,6 +152,7 @@ pub struct ProgressionCore {
     pub flora: Vec<u16>,
     pub silos: u64,
     pub player: Vec2,
+    pub music: bool,
 }
 
 #[derive(Resource)]
@@ -190,6 +192,7 @@ impl ProgressionCore {
             flora: vec![0; Flora::len()],
             silos: 0,
             player: Vec2::ZERO,
+            music: true,
         }
     }
 
@@ -817,6 +820,20 @@ fn update_player_pos_in_core(
 ) {
     let player_transform = q_player.into_inner();
     core.player = player_transform.translation.xy();
+}
+
+fn update_music_on_core(
+    mut core: ResMut<ProgressionCore>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    for ev in ev_menu_action.read() {
+        if ev.action == MenuAction::MusicOn {
+            core.music = false;
+        }
+        if ev.action == MenuAction::MusicOff {
+            core.music = true;
+        }
+    }
 }
 
 #[cfg(debug_assertions)]

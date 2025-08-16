@@ -7,6 +7,7 @@
 )]
 
 mod assets;
+mod audio;
 mod player;
 mod ui;
 mod world;
@@ -97,7 +98,12 @@ fn main() {
             .finally_init_resource::<EffectAssets>(),
     )
     .insert_resource(ClearColor(BACKGROUND_COLOR))
-    .add_plugins((ui::UiPlugin, world::WorldPlugin, player::PlayerPlugin));
+    .add_plugins((
+        ui::UiPlugin,
+        audio::GameAudioPlugin,
+        world::WorldPlugin,
+        player::PlayerPlugin,
+    ));
 
     #[cfg(not(target_arch = "wasm32"))]
     app.add_systems(Startup, spawn_bachelor_toggle).add_systems(

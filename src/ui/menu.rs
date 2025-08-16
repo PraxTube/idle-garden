@@ -4,7 +4,7 @@ use bevy::{
     text::FontSmoothing,
 };
 
-use crate::{player::GamingInput, GameAssets, GameState};
+use crate::{player::GamingInput, world::ProgressionCore, GameAssets, GameState};
 
 use super::Consent;
 
@@ -26,6 +26,8 @@ pub enum MenuAction {
     Continue,
     SendDataYes,
     SendDataNo,
+    MusicOn,
+    MusicOff,
     ResetPopUp,
     Reset,
     CancelReset,
@@ -63,6 +65,8 @@ impl MenuAction {
             Self::Continue => "Continue",
             Self::SendDataYes => "Send Data=Y",
             Self::SendDataNo => "Send Data=N",
+            Self::MusicOn => "Music=On",
+            Self::MusicOff => "Music=Off",
             Self::ResetPopUp => "Reset",
             Self::Reset => "Reset",
             Self::CancelReset => "Cancel",
@@ -171,12 +175,27 @@ fn spawn_background(commands: &mut Commands, assets: &GameAssets) -> Entity {
     root
 }
 
-fn spawn_buttons(commands: &mut Commands, font: Handle<Font>, consent: bool) -> Entity {
+fn spawn_buttons(
+    commands: &mut Commands,
+    font: Handle<Font>,
+    consent: bool,
+    music_on: bool,
+) -> Entity {
     let continue_button = spawn_button(
         commands,
         font.clone(),
         DEFAULT_FONT_SIZE,
         MenuAction::Continue,
+    );
+    let music_button = spawn_button(
+        commands,
+        font.clone(),
+        DEFAULT_FONT_SIZE,
+        if music_on {
+            MenuAction::MusicOn
+        } else {
+            MenuAction::MusicOff
+        },
     );
     let send_data = spawn_button(
         commands,
@@ -195,7 +214,7 @@ fn spawn_buttons(commands: &mut Commands, font: Handle<Font>, consent: bool) -> 
         MenuAction::ResetPopUp,
     );
 
-    let vertical_buttons = [continue_button, send_data, reset_button];
+    let vertical_buttons = [continue_button, music_button, send_data, reset_button];
 
     let buttons = commands
         .spawn((Node {
@@ -224,9 +243,19 @@ fn spawn_buttons(commands: &mut Commands, font: Handle<Font>, consent: bool) -> 
         .id()
 }
 
-fn spawn_menu(mut commands: Commands, assets: Res<GameAssets>, consent: Res<Consent>) {
+fn spawn_menu(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    core: Res<ProgressionCore>,
+    consent: Res<Consent>,
+) {
     let background = spawn_background(&mut commands, &assets);
-    let button_container = spawn_buttons(&mut commands, assets.pixel_font.clone(), consent.0);
+    let button_container = spawn_buttons(
+        &mut commands,
+        assets.pixel_font.clone(),
+        consent.0,
+        core.music,
+    );
     let discord_button = spawn_discord_button(&mut commands, &assets);
 
     commands
@@ -648,6 +677,41 @@ fn toggle_send_data_button(
     }
 }
 
+fn toggle_music(
+    mut q_texts: Query<(&mut Text, &mut MenuData)>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    let mut toggle_on = false;
+    let mut toggle_off = false;
+
+    for ev in ev_menu_action.read() {
+        if ev.action == MenuAction::MusicOn {
+            toggle_on = true;
+        }
+        if ev.action == MenuAction::MusicOff {
+            toggle_off = true;
+        }
+    }
+
+    debug_assert!(!(toggle_on && toggle_off));
+
+    if toggle_off {
+        for (mut text, mut data) in &mut q_texts {
+            if data.action == MenuAction::MusicOff {
+                data.action = MenuAction::MusicOn;
+                text.0 = MenuAction::MusicOn.string();
+            }
+        }
+    } else if toggle_on {
+        for (mut text, mut data) in &mut q_texts {
+            if data.action == MenuAction::MusicOn {
+                data.action = MenuAction::MusicOff;
+                text.0 = MenuAction::MusicOff.string();
+            }
+        }
+    }
+}
+
 fn animate_discord_button(
     time: Res<Time>,
     mut q_discord_button: Query<(&mut ImageNode, &mut DiscordButton)>,
@@ -724,6 +788,7 @@ impl Plugin for UiMenuPlugin {
                     trigger_close_reset_pop_up_event,
                     despawn_reset_pop_up,
                     toggle_send_data_button,
+                    toggle_music,
                     update_reset_pop_up_timer_text,
                     remove_reset_pop_up_timer_component,
                     remove_non_interactable_from_reset_button,
