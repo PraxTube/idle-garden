@@ -16,7 +16,7 @@ use crate::{
         utils::format_money_string_raw,
         DynamicCollider, Velocity, YSort, ZLevel, SLASH_COLLISION_GROUPS, TILE_SIZE,
     },
-    GameState,
+    BachelorBuild, GameState,
 };
 
 use crate::GameAssets;
@@ -306,8 +306,13 @@ fn spawn_offline_progress_number_pop_up(
 fn spawn_item_cost_number_pop_up_on_item_bought(
     mut commands: Commands,
     assets: Res<GameAssets>,
+    bachelor_build: Res<BachelorBuild>,
     mut ev_item_bought: EventReader<ItemBought>,
 ) {
+    if !bachelor_build.with_building {
+        ev_item_bought.clear();
+    }
+
     for ev in ev_item_bought.read() {
         spawn_number_pop_up(
             &mut commands,
@@ -410,7 +415,9 @@ impl Plugin for MapGrassPlugin {
                         in_state(GameState::Gaming).and(resource_exists::<ProgressionCore>),
                     ),
                     spawn_item_cost_number_pop_up_on_item_bought.run_if(
-                        resource_exists::<GameAssets>.and(resource_exists::<ProgressionCore>),
+                        resource_exists::<GameAssets>
+                            .and(resource_exists::<ProgressionCore>)
+                            .and(resource_exists::<BachelorBuild>),
                     ),
                     animate_number_pop_ups,
                     despawn_number_pop_ups,
