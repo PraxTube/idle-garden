@@ -30,7 +30,7 @@ struct PostRequestMarker;
 #[derive(Resource, Serialize, Deserialize)]
 pub struct GameTelemetryManager {
     telemetries: Vec<GameTelemetry>,
-    id: Uuid,
+    pub id: Uuid,
     responses: Vec<String>,
 }
 

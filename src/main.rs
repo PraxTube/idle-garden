@@ -24,6 +24,9 @@ use bevy_asset_loader::prelude::*;
 #[cfg(debug_assertions)]
 use world::simulate_progression;
 
+#[cfg(target_arch = "wasm32")]
+use crate::world::GameTelemetryManager;
+
 const BACKGROUND_COLOR: Color = Color::srgb(0.15, 0.62, 0.33);
 const DEFAULT_WINDOW_WIDTH: f32 = 1280.0;
 
@@ -58,50 +61,63 @@ fn main() {
         return;
     }
 
-    App::new()
-        .add_systems(Startup, spawn_bachelor_toggle)
-        .add_systems(
-            Update,
-            continue_from_bachelor_state.run_if(in_state(GameState::BachelorToggle)),
-        )
-        .add_plugins((
-            DefaultPlugins
-                .set(ImagePlugin::default_nearest())
-                .set(AssetPlugin {
-                    meta_check: AssetMetaCheck::Never,
+    let mut app = App::new();
+
+    app.add_plugins((
+        DefaultPlugins
+            .set(ImagePlugin::default_nearest())
+            .set(AssetPlugin {
+                meta_check: AssetMetaCheck::Never,
+                ..default()
+            })
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    present_mode: PresentMode::Fifo,
+                    mode: WindowMode::Windowed,
+                    resolution: WindowResolution::new(
+                        DEFAULT_WINDOW_WIDTH,
+                        DEFAULT_WINDOW_WIDTH * 9.0 / 16.0,
+                    ),
+                    fit_canvas_to_parent: true,
+                    #[cfg(all(not(debug_assertions), target_arch = "wasm32"))]
+                    canvas: Some("#game-canvas".to_string()),
                     ..default()
-                })
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        present_mode: PresentMode::Fifo,
-                        mode: WindowMode::Windowed,
-                        resolution: WindowResolution::new(
-                            DEFAULT_WINDOW_WIDTH,
-                            DEFAULT_WINDOW_WIDTH * 9.0 / 16.0,
-                        ),
-                        fit_canvas_to_parent: true,
-                        #[cfg(all(not(debug_assertions), target_arch = "wasm32"))]
-                        canvas: Some("#game-canvas".to_string()),
-                        ..default()
-                    }),
-                    ..default()
-                })
-                .build(),
-            Animation2DPlugin,
-            EnokiPlugin,
-        ))
-        .init_state::<GameState>()
-        .add_loading_state(
-            LoadingState::new(GameState::AssetLoading)
-                .continue_to_state(GameState::BachelorToggle)
-                .load_collection::<GameAssets>()
-                .finally_init_resource::<EffectAssets>(),
-        )
-        .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .add_plugins((ui::UiPlugin, world::WorldPlugin, player::PlayerPlugin))
-        .run();
+                }),
+                ..default()
+            })
+            .build(),
+        Animation2DPlugin,
+        EnokiPlugin,
+    ))
+    .init_state::<GameState>()
+    .add_loading_state(
+        LoadingState::new(GameState::AssetLoading)
+            .continue_to_state(GameState::BachelorToggle)
+            .load_collection::<GameAssets>()
+            .finally_init_resource::<EffectAssets>(),
+    )
+    .insert_resource(ClearColor(BACKGROUND_COLOR))
+    .add_plugins((ui::UiPlugin, world::WorldPlugin, player::PlayerPlugin));
+
+    #[cfg(not(target_arch = "wasm32"))]
+    app.add_systems(Startup, spawn_bachelor_toggle).add_systems(
+        Update,
+        continue_from_bachelor_state_native.run_if(in_state(GameState::BachelorToggle)),
+    );
+
+    #[cfg(target_arch = "wasm32")]
+    app.add_systems(
+        Update,
+        continue_from_bachelor_state_wasm.run_if(
+            resource_exists::<GameTelemetryManager>
+                .and(in_state(GameState::BachelorToggle).and(run_once)),
+        ),
+    );
+
+    app.run();
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn spawn_bachelor_toggle(mut commands: Commands) {
     commands.spawn((
         BachelorBuildComponent,
@@ -130,7 +146,20 @@ fn spawn_bachelor_toggle(mut commands: Commands) {
     ));
 }
 
-fn continue_from_bachelor_state(
+#[cfg(target_arch = "wasm32")]
+fn continue_from_bachelor_state_wasm(
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<GameState>>,
+    telemetry: Res<GameTelemetryManager>,
+) {
+    commands.insert_resource(BachelorBuild {
+        with_building: telemetry.id.as_u128() & 1 == 1,
+    });
+    next_state.set(GameState::ConsentCheck);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn continue_from_bachelor_state_native(
     mut commands: Commands,
     mut next_state: ResMut<NextState<GameState>>,
     keys: Res<ButtonInput<KeyCode>>,
@@ -144,7 +173,7 @@ fn continue_from_bachelor_state(
     commands.insert_resource(BachelorBuild { with_building });
     next_state.set(GameState::ConsentCheck);
 
-    for entity in &q_bachelor_components {
+    for entity in q_bachelor_components {
         commands.entity(entity).despawn();
     }
 }

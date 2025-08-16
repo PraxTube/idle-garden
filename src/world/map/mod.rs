@@ -16,7 +16,7 @@ use wasm_bindgen::prelude::*;
 pub use building::{Blueprint, BuildingSystemSet};
 pub use flora::Flora;
 pub use grass::CutTallGrass;
-use telemetry::GameTelemetryManager;
+pub use telemetry::GameTelemetryManager;
 
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::window::exit_on_all_closed;
