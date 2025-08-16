@@ -44,6 +44,12 @@ fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec
 
     commands.spawn((
         ChildOf(root),
+        Transform::from_translation(Vec3::new(0.0, -15.0, -10.0)).with_scale(Vec3::splat(0.5)),
+        Sprite::from_image(assets.player_shadow.clone()),
+    ));
+
+    commands.spawn((
+        ChildOf(root),
         Transform::from_scale(Vec3::splat(0.5)),
         animator,
         Sprite::from_atlas_image(assets.player.clone(), assets.player_layout.clone().into()),
