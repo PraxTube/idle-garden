@@ -52,15 +52,17 @@ enum TelemetryActions {
     ItemBought,
 }
 
-impl GameTelemetryManager {
-    fn empty() -> Self {
+impl Default for GameTelemetryManager {
+    fn default() -> Self {
         Self {
             telemetries: Vec::new(),
             id: Uuid::new_v4(),
             responses: Vec::new(),
         }
     }
+}
 
+impl GameTelemetryManager {
     /// Clear the telemetries and responses, of course don't clear the UUID.
     fn clear(&mut self) {
         self.responses.clear();
@@ -99,21 +101,13 @@ impl TelemetryActions {
 fn insert_game_telemetry_wasm(commands: &mut Commands) {
     use web_sys::window;
 
-    let storage = window()
-        .expect("failed to get window")
-        .local_storage()
-        .expect("failed to get local storage")
-        .expect("failed to unwrap local storage");
+    let storage = window().and_then(|w| w.local_storage().ok()).flatten();
 
-    let telemetry = match storage
-        .get_item(WASM_GAME_TELEMETRY_KEY_STORAGE)
-        .expect("failed to get local storage item WASM key")
-    {
-        Some(r) => {
-            serde_json::from_str(&r).expect("failed to parse progression core from json string")
-        }
-        None => GameTelemetryManager::empty(),
-    };
+    let telemetry: GameTelemetryManager = storage
+        .as_ref()
+        .and_then(|s| s.get_item(WASM_GAME_TELEMETRY_KEY_STORAGE).ok().flatten())
+        .and_then(|r| serde_json::from_str(&r).ok())
+        .unwrap_or_default();
 
     commands.insert_resource(telemetry);
 }
@@ -125,7 +119,7 @@ fn insert_game_telemetry_native(commands: &mut Commands) {
     let raw_core =
         read_to_string(GAME_TELEMETRY_FILE).expect("failed to read progression core file");
     let core = if raw_core.is_empty() {
-        GameTelemetryManager::empty()
+        GameTelemetryManager::default()
     } else {
         serde_json::from_str(&raw_core).expect("failed to parse progression core from json string")
     };
@@ -150,15 +144,14 @@ fn send_data_to_server(
     }
 
     let payload = serde_json::to_string(&*telemetry)
-        .expect("failed to parse GameTelemetryManager to json string");
+        .unwrap_or_else(|_| "FAILED TO SERIALIZE GAME TELEMETRY, WOOPS".to_string());
     let hmac = generate_hmac(&payload);
     let url = format!("{}/{}", POST_URL, hmac);
 
-    let req = client
-        .post(url)
-        .body(payload)
-        .build()
-        .expect("failed to build reqwest request");
+    let Ok(req) = client.post(url).body(payload).build() else {
+        error!("failed to build Request (for telemetry)");
+        return;
+    };
 
     client
         .send(req)
@@ -192,8 +185,10 @@ fn generate_hmac(payload: &str) -> String {
 
     type HmacSha256 = Hmac<Sha256>;
 
-    let mut mac =
-        HmacSha256::new_from_slice(APIKEY.as_bytes()).expect("HMAC can take key of any size");
+    let Ok(mut mac) = HmacSha256::new_from_slice(APIKEY.as_bytes()) else {
+        error!("failed to generate Hmac from slice (API KEY), must never happen!");
+        return String::default();
+    };
     mac.update(payload.as_bytes());
 
     let result = mac.finalize();

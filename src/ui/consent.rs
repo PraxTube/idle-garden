@@ -196,15 +196,11 @@ fn check_consent_wasm() -> String {
     use crate::assets::WASM_CONSENT_STORAGE;
     use web_sys::window;
 
-    let storage = window()
-        .expect("failed to get window")
-        .local_storage()
-        .expect("failed to get local storage")
-        .expect("failed to unwrap local storage");
+    let storage = window().and_then(|w| w.local_storage().ok()).flatten();
 
     storage
-        .get_item(WASM_CONSENT_STORAGE)
-        .expect("failed to get local storage item WASM key")
+        .as_ref()
+        .and_then(|s| s.get_item(WASM_CONSENT_STORAGE).ok().flatten())
         .unwrap_or_default()
 }
 
@@ -246,15 +242,15 @@ fn write_consent_wasm(msg: &str) {
     use crate::assets::WASM_CONSENT_STORAGE;
     use web_sys::window;
 
-    let storage = window()
-        .expect("failed to get window")
-        .local_storage()
-        .expect("failed to get local storage")
-        .expect("failed to unwrap local storage");
+    let storage = window().and_then(|w| w.local_storage().ok()).flatten();
 
-    storage
-        .set_item(WASM_CONSENT_STORAGE, msg)
-        .expect("failed to write to consent storage");
+    if storage
+        .as_ref()
+        .and_then(|s| s.set_item(WASM_CONSENT_STORAGE, msg).ok())
+        .is_none()
+    {
+        error!("failed to set consent key in local storage");
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

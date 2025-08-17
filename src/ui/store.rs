@@ -172,9 +172,10 @@ fn spawn_store_item(
 }
 
 fn spawn_store(mut commands: Commands, assets: Res<GameAssets>, images: Res<Assets<Image>>) {
-    let store_bar_image = images
-        .get(&assets.store_bar)
-        .expect("failed to get store bar image");
+    let Some(store_bar_image) = images.get(&assets.store_bar) else {
+        return;
+    };
+
     let store_bar_image_size = store_bar_image.size();
 
     let width = store_bar_image_size.x as f32;

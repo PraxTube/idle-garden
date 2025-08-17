@@ -182,8 +182,8 @@ pub struct ItemBought {
 #[derive(Event)]
 pub struct AutoSave;
 
-impl ProgressionCore {
-    fn empty() -> Self {
+impl Default for ProgressionCore {
+    fn default() -> Self {
         Self {
             previous_timestamp: 0,
             offline_progression: 0,
@@ -197,7 +197,9 @@ impl ProgressionCore {
             sound: true,
         }
     }
+}
 
+impl ProgressionCore {
     pub fn is_affordable(&self, map_data: &MapData, flora: &Flora) -> bool {
         self.points
             >= map_data
@@ -210,38 +212,37 @@ impl ProgressionCore {
     }
 }
 
-impl MapData {
-    fn build_flora_data() -> Vec<FloraData> {
-        let map: HashMap<Flora, FloraData> = serde_json::from_str(FLORA_DATA_CORE)
-            .expect("failed to parse flora data core to json str");
-
-        debug_assert_eq!(map.len(), Flora::len());
-
-        let mut data = vec![FloraData::default(); Flora::len()];
-
-        for key in map.keys() {
-            data[key.index()] = map
-                .get(key)
-                .expect("failed to get key, must never happen")
-                .clone();
-        }
-
-        data
-    }
-
-    fn empty() -> Self {
+impl Default for MapData {
+    fn default() -> Self {
         Self {
             grid: vec![[TALL_GRASS_CELL_VALUE; MAP_SIZE]; MAP_SIZE],
             flora_data: Self::build_flora_data(),
             previous_player_blocked_cells: Vec::new(),
         }
     }
+}
 
-    /// Expects string to be of form
+impl MapData {
+    fn build_flora_data() -> Vec<FloraData> {
+        let map: HashMap<Flora, FloraData> =
+            serde_json::from_str(FLORA_DATA_CORE).unwrap_or_default();
+
+        debug_assert_eq!(map.len(), Flora::len());
+
+        let mut data = vec![FloraData::default(); Flora::len()];
+
+        for (key, value) in &map {
+            data[key.index()] = value.clone();
+        }
+
+        data
+    }
+
+    /// String must be of form
     ///
     /// usize,usize:u16;REPEAT
     fn from_str(string: &str) -> Self {
-        let mut map_data = MapData::empty();
+        let mut map_data = MapData::default();
 
         if string.is_empty() {
             return map_data;
@@ -255,14 +256,16 @@ impl MapData {
 
             debug_assert_eq!(xy.len(), 2, "{:?}", string);
 
-            let (x, y) = (
-                xy[0].parse::<usize>().expect("failed to parse to usize"),
-                xy[1].parse::<usize>().expect("failed to parse to usize"),
-            );
+            let Ok(x) = xy[0].parse::<usize>() else {
+                return MapData::default();
+            };
+            let Ok(y) = xy[1].parse::<usize>() else {
+                return MapData::default();
+            };
 
-            let value = parts[1]
-                .parse::<u16>()
-                .expect("failed to parse value to u16");
+            let Ok(value) = parts[1].parse::<u16>() else {
+                return MapData::default();
+            };
 
             map_data.grid[x][y] = value;
         }
@@ -413,26 +416,20 @@ impl ZLevel {
 fn insert_map_data_wasm(commands: &mut Commands) {
     use web_sys::window;
 
-    let storage = window()
-        .expect("failed to get window")
-        .local_storage()
-        .expect("failed to get local storage")
-        .expect("failed to unwrap local storage");
+    let storage = window().and_then(|w| w.local_storage().ok()).flatten();
 
-    let map_data = match storage
-        .get_item(WASM_MAP_DATA_KEY_STORAGE)
-        .expect("failed to get local storage item WASM key")
-    {
-        Some(r) => MapData::from_str(&r),
-        None => MapData::empty(),
-    };
+    let map_data: MapData = storage
+        .as_ref()
+        .and_then(|s| s.get_item(WASM_MAP_DATA_KEY_STORAGE).ok().flatten())
+        .and_then(|r| Some(MapData::from_str(&r)))
+        .unwrap_or_default();
 
     commands.insert_resource(map_data);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn insert_map_data_native(commands: &mut Commands) {
-    let raw_map_data = read_to_string(MAP_DATA_FILE).expect("failed to read map data file");
+    let raw_map_data = read_to_string(MAP_DATA_FILE).unwrap_or_default();
     let map_data = MapData::from_str(&raw_map_data);
     commands.insert_resource(map_data);
 }
@@ -449,21 +446,13 @@ fn insert_map_data_resource(mut commands: Commands) {
 fn insert_progression_core_wasm(commands: &mut Commands) {
     use web_sys::window;
 
-    let storage = window()
-        .expect("failed to get window")
-        .local_storage()
-        .expect("failed to get local storage")
-        .expect("failed to unwrap local storage");
+    let storage = window().and_then(|w| w.local_storage().ok()).flatten();
 
-    let core = match storage
-        .get_item(WASM_PROGRESSION_CORE_KEY_STORAGE)
-        .expect("failed to get local storage item WASM key")
-    {
-        Some(r) => {
-            serde_json::from_str(&r).expect("failed to parse progression core from json string")
-        }
-        None => ProgressionCore::empty(),
-    };
+    let core: ProgressionCore = storage
+        .as_ref()
+        .and_then(|s| s.get_item(WASM_PROGRESSION_CORE_KEY_STORAGE).ok().flatten())
+        .and_then(|r| serde_json::from_str(&r).ok())
+        .unwrap_or_default();
 
     commands.insert_resource(core);
 }
@@ -473,7 +462,7 @@ fn insert_progression_core_native(commands: &mut Commands) {
     let raw_core =
         read_to_string(PROGRESSION_CORE_FILE).expect("failed to read progression core file");
     let core = if raw_core.is_empty() {
-        ProgressionCore::empty()
+        ProgressionCore::default()
     } else {
         serde_json::from_str(&raw_core).expect("failed to parse progression core from json string")
     };
@@ -492,11 +481,10 @@ fn insert_progression_core(mut commands: Commands) {
 fn save_game_state_wasm(keys: &[&str; 3], data: &[String; 3]) {
     use web_sys::window;
 
-    let storage = window()
-        .expect("failed to get window")
-        .local_storage()
-        .expect("failed to get local storage")
-        .expect("failed to unwrap local storage");
+    let Some(storage) = window().and_then(|w| w.local_storage().ok()).flatten() else {
+        error!("failed to get browser storage (for writing)");
+        return;
+    };
 
     for i in 0..keys.len() {
         let err_msg = format!(
@@ -504,7 +492,9 @@ fn save_game_state_wasm(keys: &[&str; 3], data: &[String; 3]) {
             keys[i], &data[i]
         );
 
-        storage.set_item(keys[i], &data[i]).expect(&err_msg);
+        if storage.set_item(keys[i], &data[i]).is_err() {
+            error!("{}", err_msg);
+        }
     }
 }
 
@@ -524,9 +514,12 @@ fn sync_state_to_js(
     let data = package_save_data(&core, &map_data, &telemetry);
     let save_data: HashMap<&&str, &String> = WASM_KEYS.iter().zip(data.iter()).collect();
 
-    buffer_game_state(
-        &serde_json::to_string(&save_data).expect("failed to parse hashmap save data to json"),
-    );
+    let Ok(save_data_string) = &serde_json::to_string(&save_data) else {
+        error!("failed to parse hashmap save data to json");
+        return;
+    };
+
+    buffer_game_state(save_data_string);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -552,9 +545,9 @@ fn package_save_data(
     telemetry: &GameTelemetryManager,
 ) -> [String; 3] {
     [
-        serde_json::to_string(core).expect("failed to serialize progression core"),
+        serde_json::to_string(core).unwrap_or_default(),
         map_data.to_string(),
-        serde_json::to_string(telemetry).expect("failed to serialize game telemetry"),
+        serde_json::to_string(telemetry).unwrap_or_default(),
     ]
 }
 
@@ -588,8 +581,8 @@ fn reset_game_state(
         return;
     }
 
-    *core = ProgressionCore::empty();
-    *map_data = MapData::empty();
+    *core = ProgressionCore::default();
+    *map_data = MapData::default();
 }
 
 fn compute_current_pps(core: &ProgressionCore, map_data: &MapData) -> u32 {
@@ -883,8 +876,8 @@ pub fn simulate_progression() {
         Some(best_index)
     }
 
-    let mut core = ProgressionCore::empty();
-    let map_data = MapData::empty();
+    let mut core = ProgressionCore::default();
+    let map_data = MapData::default();
     assert_eq!(core.flora.len(), map_data.flora_data.len());
 
     core.points = DEFAULT_POINTS_CAP / 10;
@@ -941,7 +934,7 @@ pub fn simulate_progression() {
 
 #[test]
 fn validate_pos_to_grid_indices() {
-    let map_data = MapData::empty();
+    let map_data = MapData::default();
 
     assert_eq!(
         map_data.pos_to_grid_indices(Vec2::ZERO),
@@ -973,7 +966,7 @@ fn validate_pos_to_grid_indices() {
 
 #[test]
 fn validate_grid_indices_to_pos() {
-    let map_data = MapData::empty();
+    let map_data = MapData::default();
 
     assert_eq!(
         map_data.grid_indices_to_pos(0, 0),
@@ -991,7 +984,7 @@ fn validate_grid_indices_to_pos() {
 
 #[test]
 fn validate_grid_index() {
-    let map_data = MapData::empty();
+    let map_data = MapData::default();
 
     map_data.grid_index(0, 0);
     map_data.grid_index(MAP_SIZE, 0);
@@ -1002,15 +995,12 @@ fn validate_grid_index() {
 
 #[test]
 fn validate_flora_len_matches_json_data() {
-    let map: HashMap<Flora, FloraData> =
-        serde_json::from_str(FLORA_DATA_CORE).expect("failed to parse flora data core to json str");
+    let map: HashMap<Flora, FloraData> = serde_json::from_str(FLORA_DATA_CORE).unwrap_or_default();
 
     assert_eq!(Flora::len(), map.len());
 }
 
 #[test]
 fn validate_silo_points_cap_increases_fast_enough() {
-    let map_data = MapData::empty();
-
     assert!(POINTS_CAP_INCEASE_PER_SILO >= POINTS_CAP_COST_INCREASE_PER_SILO)
 }
