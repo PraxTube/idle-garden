@@ -1,4 +1,6 @@
 use bevy::prelude::*;
+#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
+use bevy::window::PrimaryWindow;
 
 /// Convert `Vec2` to `Quat` by taking angle between `Vec2::X`.
 /// Returns `Quat::IDENTITY` for `Vec2::ZERO`.
@@ -71,6 +73,37 @@ pub fn save_screenshot(
             .spawn(Screenshot::primary_window())
             .observe(save_to_disk(path));
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn toggle_full_screen(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut q_main_window: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    use crate::DEFAULT_WINDOW_WIDTH;
+    use bevy::window::{WindowMode, WindowResolution};
+
+    if !keys.just_pressed(KeyCode::KeyB) {
+        return;
+    }
+
+    let mut window = match q_main_window.single_mut() {
+        Ok(w) => w,
+        Err(err) => {
+            error!("there is not exactly one window, {}", err);
+            return;
+        }
+    };
+
+    window.mode = if window.mode
+        != WindowMode::Fullscreen(MonitorSelection::Current, VideoModeSelection::Current)
+    {
+        WindowMode::Fullscreen(MonitorSelection::Current, VideoModeSelection::Current)
+    } else {
+        window.resolution =
+            WindowResolution::new(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_WIDTH * 9.0 / 16.0);
+        WindowMode::Windowed
+    };
 }
 
 #[test]

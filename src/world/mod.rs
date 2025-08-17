@@ -40,5 +40,8 @@ impl Plugin for WorldPlugin {
 
         #[cfg(not(target_arch = "wasm32"))]
         app.add_systems(Update, utils::save_screenshot);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_systems(Update, utils::toggle_full_screen);
     }
 }
