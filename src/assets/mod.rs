@@ -105,6 +105,8 @@ pub struct GameAssets {
     // --- MAP ---
     #[asset(path = "map/grass.png")]
     pub grass: Handle<Image>,
+    #[asset(path = "map/grass_background.png")]
+    pub grass_background_tile: Handle<Image>,
 
     #[asset(
         paths(

@@ -165,7 +165,7 @@ pub struct MapData {
 
 pub enum ZLevel {
     Background,
-    // Floor,
+    Floor,
     // GroundEffect,
     // BottomEnvironment,
     TopEnvironment,
@@ -400,7 +400,7 @@ impl ZLevel {
     pub fn value(&self) -> f32 {
         match self {
             ZLevel::Background => -1e5,
-            // ZLevel::Floor => -3e4,
+            ZLevel::Floor => -3e4,
             // ZLevel::GroundEffect => -2e4,
             // ZLevel::BottomEnvironment => -1e4,
             ZLevel::TopEnvironment => 1e4,

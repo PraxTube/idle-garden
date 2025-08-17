@@ -68,7 +68,7 @@ fn spawn_fence(commands: &mut Commands, assets: &GameAssets, pos: Vec2, x: usize
     let z = if ysort_above {
         ZLevel::TopEnvironment.value()
     } else {
-        ZLevel::Background.value()
+        ZLevel::Floor.value()
     };
 
     commands.spawn((

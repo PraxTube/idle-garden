@@ -392,12 +392,33 @@ fn set_grass_timestamps(
     }
 }
 
+fn spawn_background_grass_tile(commands: &mut Commands, assets: &GameAssets, pos: Vec2) {
+    commands.spawn((
+        Transform::from_translation(pos.extend(ZLevel::Background.value())),
+        Sprite::from_image(assets.grass_background_tile.clone()),
+    ));
+}
+
+fn spawn_background_grass_tiles(mut commands: Commands, assets: Res<GameAssets>) {
+    let i_map_size = MAP_SIZE as i32 / 6;
+    for i in -i_map_size..i_map_size {
+        for j in -i_map_size..i_map_size {
+            let pos = Vec2::new(i as f32 * 63.95, j as f32 * 63.95);
+            spawn_background_grass_tile(&mut commands, &assets, pos);
+        }
+    }
+}
+
 pub struct MapGrassPlugin;
 
 impl Plugin for MapGrassPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(Material2dPlugin::<GrassMaterial>::default())
             .add_event::<CutTallGrass>()
+            .add_systems(
+                OnExit(GameState::AssetLoading),
+                spawn_background_grass_tiles,
+            )
             .add_systems(
                 Update,
                 (
