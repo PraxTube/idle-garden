@@ -14,7 +14,6 @@ pub use collisions::{
 pub use debug::DebugState;
 #[cfg(debug_assertions)]
 pub use map::simulate_progression;
-#[cfg(target_arch = "wasm32")]
 pub use map::GameTelemetryManager;
 pub use map::{
     AutoSave, BuildingSystemSet, Flora, ItemBought, MapData, ProgressionCore, ProgressionSystemSet,

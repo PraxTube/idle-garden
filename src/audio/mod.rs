@@ -162,7 +162,7 @@ fn change_fade_on_core_music(core: Res<ProgressionCore>, q_bgm: Single<&mut Bgm>
     if core.music != bgm.is_active {
         bgm.is_active = core.music;
         if core.music {
-            bgm.fade_time = 10.0;
+            bgm.fade_time = 5.0;
             bgm.fade_in = true;
             bgm.fade_out = false;
         } else {

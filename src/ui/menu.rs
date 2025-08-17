@@ -4,13 +4,18 @@ use bevy::{
     text::FontSmoothing,
 };
 
-use crate::{player::GamingInput, world::ProgressionCore, GameAssets, GameState};
+use crate::{
+    player::GamingInput,
+    world::{GameTelemetryManager, ProgressionCore},
+    GameAssets, GameState,
+};
 
 use super::Consent;
 
 const DEFAULT_FONT_SIZE: f32 = 25.0;
 const RESET_UNLOCK_TIME: f32 = 3.0;
 const DISCORD_LINK: &str = "https://discord.gg/2h7dncQNTr";
+const SURVEY_LINK: &str = "https://rancic.org/idle-garden-survey";
 
 #[derive(Resource, Default)]
 struct MenuNavigator {
@@ -32,6 +37,7 @@ pub enum MenuAction {
     SoundOff,
     ResetPopUp,
     Reset,
+    Survey,
     CancelReset,
     UnlockReset,
     Discord,
@@ -73,6 +79,7 @@ impl MenuAction {
             Self::SoundOff => "Sound=Off",
             Self::ResetPopUp => "Reset",
             Self::Reset => "Reset",
+            Self::Survey => "Open Survey",
             Self::CancelReset => "Cancel",
             Self::UnlockReset => "SHOULD NEVER SEE THIS",
             Self::Discord => "SHOULD NEVER SEE THIS",
@@ -227,12 +234,19 @@ fn spawn_buttons(
         DEFAULT_FONT_SIZE,
         MenuAction::ResetPopUp,
     );
+    let survey_button = spawn_button(
+        commands,
+        font.clone(),
+        DEFAULT_FONT_SIZE,
+        MenuAction::Survey,
+    );
 
     let vertical_buttons = [
         continue_button,
         music_button,
         sound_button,
         send_data,
+        survey_button,
         reset_button,
     ];
 
@@ -792,6 +806,20 @@ fn animate_discord_button(
     image.color.set_alpha(alpha);
 }
 
+fn open_url_link(url: &str, err_str: &str) {
+    #[cfg(not(target_arch = "wasm32"))]
+    if open::that(url).is_err() {
+        error!(err_str);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    if let Some(win) = web_sys::window() {
+        if win.open_with_url_and_target(url, "_blank").is_err() {
+            error!(err_str);
+        }
+    }
+}
+
 fn open_discord_link(mut ev_menu_action: EventReader<MenuActionEvent>) {
     if !ev_menu_action
         .read()
@@ -801,21 +829,23 @@ fn open_discord_link(mut ev_menu_action: EventReader<MenuActionEvent>) {
     }
 
     let err_str = "failed to open discord link in default browser";
+    open_url_link(DISCORD_LINK, err_str);
+}
 
-    #[cfg(not(target_arch = "wasm32"))]
-    if open::that(DISCORD_LINK).is_err() {
-        error!(err_str);
+fn open_survey_link(
+    telemetry: Res<GameTelemetryManager>,
+    mut ev_menu_action: EventReader<MenuActionEvent>,
+) {
+    if !ev_menu_action
+        .read()
+        .any(|ev| ev.action == MenuAction::Survey)
+    {
+        return;
     }
 
-    #[cfg(target_arch = "wasm32")]
-    if let Some(win) = web_sys::window() {
-        if win
-            .open_with_url_and_target(DISCORD_LINK, "_blank")
-            .is_err()
-        {
-            error!(err_str);
-        }
-    }
+    let err_str = "failed to open survey link in default browser";
+    let url = format!("{}/?id={}", SURVEY_LINK, telemetry.id);
+    open_url_link(&url, err_str);
 }
 
 pub struct UiMenuPlugin;
@@ -846,6 +876,7 @@ impl Plugin for UiMenuPlugin {
                     remove_non_interactable_from_reset_button,
                     animate_discord_button,
                     open_discord_link,
+                    open_survey_link,
                     set_buttons_active_on_cancel_reset,
                     set_buttons_inactive_on_reset_pop_up,
                 )
