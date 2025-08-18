@@ -7,7 +7,7 @@ use crate::{
     player::GamingInput, ui::ItemPressed, world::TILE_SIZE, BachelorBuild, GameAssets, GameState,
 };
 
-use super::{Flora, ItemBought, MapData, ProgressionCore, ProgressionSystemSet, ZLevel};
+use super::{Flora, MapData, ProgressionCore, ProgressionSystemSet, ZLevel};
 
 const USER_GRID_OFFSET: Vec2 = Vec2::new(0.5 * TILE_SIZE, 0.5 * TILE_SIZE);
 
@@ -140,18 +140,17 @@ fn despawn_blueprint_on_player_input(
     }
 }
 
-fn despawn_blueprint_on_item_bought(
+fn despawn_blueprint_if_not_affordable(
     mut commands: Commands,
     core: Res<ProgressionCore>,
     map_data: Res<MapData>,
-    q_blueprint: Query<Entity, With<Blueprint>>,
-    mut ev_item_bought: EventReader<ItemBought>,
+    q_blueprints: Query<(Entity, &Blueprint)>,
 ) {
-    for ev in ev_item_bought.read() {
-        if !core.is_affordable(&map_data, &ev.item) {
-            for entity in &q_blueprint {
-                commands.entity(entity).despawn();
-            }
+    debug_assert!(q_blueprints.iter().count() <= 1);
+
+    for (entity, blueprint) in &q_blueprints {
+        if !core.is_affordable(&map_data, &blueprint.item) {
+            commands.entity(entity).despawn();
         }
     }
 }
@@ -194,7 +193,7 @@ impl Plugin for MapBuildingPlugin {
                     ),
                     move_blueprint.run_if(resource_exists::<MapData>),
                     display_building_grid,
-                    despawn_blueprint_on_item_bought
+                    despawn_blueprint_if_not_affordable
                         .run_if(resource_exists::<ProgressionCore>.and(resource_exists::<MapData>)),
                     update_blueprint_color,
                 )
