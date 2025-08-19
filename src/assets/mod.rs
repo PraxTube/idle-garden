@@ -170,16 +170,29 @@ pub struct GameAssets {
 pub struct EffectAssets {
     pub cut_grass_material: Handle<SpriteParticle2dMaterial>,
     pub cut_grass_particles: Handle<Particle2dEffect>,
+    pub rect_mesh: Handle<Mesh>,
 }
 
 impl FromWorld for EffectAssets {
     fn from_world(world: &mut World) -> Self {
+        let Some(mut meshes) = world.get_resource_mut::<Assets<Mesh>>() else {
+            return {
+                Self {
+                    cut_grass_material: Handle::<SpriteParticle2dMaterial>::default(),
+                    cut_grass_particles: Handle::<Particle2dEffect>::default(),
+                    rect_mesh: Handle::<Mesh>::default(),
+                }
+            };
+        };
+        let rect_mesh = meshes.add(Rectangle::default());
+
         let testy_particles = world.load_asset(CUT_GRASS_PARTICLES_FILE);
         let Some(assets) = world.get_resource::<GameAssets>() else {
             error!("failed to get GameAssets, must be exist at this point");
             return Self {
                 cut_grass_material: Handle::<SpriteParticle2dMaterial>::default(),
                 cut_grass_particles: Handle::<Particle2dEffect>::default(),
+                rect_mesh: rect_mesh.clone(),
             };
         };
 
@@ -191,6 +204,7 @@ impl FromWorld for EffectAssets {
             return Self {
                 cut_grass_material: Handle::<SpriteParticle2dMaterial>::default(),
                 cut_grass_particles: Handle::<Particle2dEffect>::default(),
+                rect_mesh: rect_mesh.clone(),
             };
         };
 
@@ -200,6 +214,7 @@ impl FromWorld for EffectAssets {
         Self {
             cut_grass_material: default_particle_material,
             cut_grass_particles: testy_particles,
+            rect_mesh: rect_mesh.clone(),
         }
     }
 }

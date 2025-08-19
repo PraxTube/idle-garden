@@ -5,7 +5,7 @@ use bevy::{
     sprite::{AlphaMode2d, Material2d, Material2dPlugin},
 };
 
-use crate::{assets::CLOUDS_SHADER, world::MainCamera, GameAssets, GameState};
+use crate::{assets::CLOUDS_SHADER, world::MainCamera, EffectAssets, GameAssets, GameState};
 
 use super::ZLevel;
 
@@ -62,12 +62,12 @@ impl Material2d for CloudsMaterial {
 fn spawn_clouds(
     mut commands: Commands,
     assets: Res<GameAssets>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    effects: Res<EffectAssets>,
     mut materials: ResMut<Assets<CloudsMaterial>>,
 ) {
     let transform = Transform::from_xyz(0.0, 0.0, ZLevel::TopEnvironment.value())
         .with_scale(Vec3::new(CLOUDS_NOISE_WIDTH, CLOUDS_NOISE_HEIGHT, 1.0));
-    let mesh = Mesh2d(meshes.add(Rectangle::default()));
+    let mesh = Mesh2d(effects.rect_mesh.clone());
     let mat = MeshMaterial2d(materials.add(CloudsMaterial {
         primary: assets.primary_clouds_noise_texture.clone(),
         secondary: assets.secondary_clouds_noise_texture.clone(),

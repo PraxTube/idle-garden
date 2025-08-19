@@ -16,7 +16,7 @@ use crate::{
         utils::format_money_string_raw,
         DynamicCollider, Velocity, YSort, ZLevel, SLASH_COLLISION_GROUPS, TILE_SIZE,
     },
-    BachelorBuild, GameState,
+    BachelorBuild, EffectAssets, GameState,
 };
 
 use crate::GameAssets;
@@ -100,7 +100,7 @@ impl Material2d for GrassMaterial {
 fn spawn_tall_grass(
     commands: &mut Commands,
     assets: &GameAssets,
-    meshes: &mut Assets<Mesh>,
+    effects: &EffectAssets,
     materials: &mut Assets<GrassMaterial>,
     images: &Assets<Image>,
     pos: Vec2,
@@ -117,8 +117,7 @@ fn spawn_tall_grass(
         TallGrass,
         YSort(0.0),
         Transform::from_translation(pos.extend(0.0)).with_scale(image_size.extend(1.0)),
-        // TODO: Spawn once and set to handle
-        Mesh2d(meshes.add(Rectangle::default())),
+        Mesh2d(effects.rect_mesh.clone()),
         MeshMaterial2d(
             materials
                 .add(GrassMaterial {
@@ -137,7 +136,7 @@ fn spawn_tall_grass(
 fn spawn_tall_grass_in_quads(
     commands: &mut Commands,
     assets: &GameAssets,
-    meshes: &mut Assets<Mesh>,
+    effects: &EffectAssets,
     materials: &mut Assets<GrassMaterial>,
     images: &Assets<Image>,
     center_pos: Vec2,
@@ -154,14 +153,14 @@ fn spawn_tall_grass_in_quads(
 
         let random_shift = Vec2::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
         let pos = center_pos + offset + random_shift * QUAD_MAX_SHIFT_OFFSET;
-        spawn_tall_grass(commands, assets, meshes, materials, images, pos);
+        spawn_tall_grass(commands, assets, effects, materials, images, pos);
     }
 }
 
 fn spawn_grass(
     mut commands: Commands,
     assets: Res<GameAssets>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    effects: Res<EffectAssets>,
     mut materials: ResMut<Assets<GrassMaterial>>,
     images: Res<Assets<Image>>,
     map_data: Res<MapData>,
@@ -179,7 +178,7 @@ fn spawn_grass(
             spawn_tall_grass_in_quads(
                 &mut commands,
                 &assets,
-                &mut meshes,
+                &effects,
                 &mut materials,
                 &images,
                 center_pos,
@@ -191,7 +190,7 @@ fn spawn_grass(
 fn respawn_grass_on_reset(
     mut commands: Commands,
     assets: Res<GameAssets>,
-    meshes: ResMut<Assets<Mesh>>,
+    effects: Res<EffectAssets>,
     materials: ResMut<Assets<GrassMaterial>>,
     images: Res<Assets<Image>>,
     map_data: Res<MapData>,
@@ -209,7 +208,7 @@ fn respawn_grass_on_reset(
         commands.entity(entity).despawn();
     }
 
-    spawn_grass(commands, assets, meshes, materials, images, map_data);
+    spawn_grass(commands, assets, effects, materials, images, map_data);
 }
 
 fn despawn_tall_grass(mut commands: Commands, mut ev_cut_tall_grass: EventReader<CutTallGrass>) {
@@ -425,7 +424,11 @@ impl Plugin for MapGrassPlugin {
                     spawn_grass.run_if(resource_exists::<InitialFloraSpawned>.and(run_once)),
                     respawn_grass_on_reset.after(ProgressionSystemSet),
                 )
-                    .run_if(resource_exists::<GameAssets>.and(resource_exists::<MapData>)),
+                    .run_if(
+                        resource_exists::<GameAssets>
+                            .and(resource_exists::<EffectAssets>)
+                            .and(resource_exists::<MapData>),
+                    ),
             )
             .add_systems(
                 Update,

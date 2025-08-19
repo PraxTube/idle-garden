@@ -15,7 +15,7 @@ use crate::{
         collisions::{StaticCollider, WORLD_COLLISION_GROUPS},
         TILE_SIZE,
     },
-    BachelorBuild, GameAssets,
+    BachelorBuild, EffectAssets, GameAssets,
 };
 
 use super::{
@@ -154,7 +154,7 @@ impl Material2d for FloraMaterial {
 fn spawn_flora(
     commands: &mut Commands,
     assets: &GameAssets,
-    meshes: &mut Assets<Mesh>,
+    effects: &EffectAssets,
     materials: &mut Assets<FloraMaterial>,
     images: &Assets<Image>,
     pos: Vec2,
@@ -193,7 +193,7 @@ fn spawn_flora(
                 Transform::from_translation(gfx_offset.extend(0.0))
                     .with_scale(image_size.extend(1.0)),
             )
-            .insert(Mesh2d(meshes.add(Rectangle::default())))
+            .insert(Mesh2d(effects.rect_mesh.clone()))
             .insert(MeshMaterial2d(
                 materials
                     .add(FloraMaterial {
@@ -216,7 +216,7 @@ fn spawn_flora(
 fn spawn_flora_on_item_bought(
     mut commands: Commands,
     assets: Res<GameAssets>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    effects: Res<EffectAssets>,
     mut materials: ResMut<Assets<FloraMaterial>>,
     images: Res<Assets<Image>>,
     mut map_data: ResMut<MapData>,
@@ -235,7 +235,7 @@ fn spawn_flora_on_item_bought(
         spawn_flora(
             &mut commands,
             &assets,
-            &mut meshes,
+            &effects,
             &mut materials,
             &images,
             pos,
@@ -248,7 +248,7 @@ fn spawn_flora_on_item_bought(
 fn spawn_flora_on_map_data_insertion(
     mut commands: Commands,
     assets: Res<GameAssets>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    effects: Res<EffectAssets>,
     mut materials: ResMut<Assets<FloraMaterial>>,
     images: Res<Assets<Image>>,
     map_data: Res<MapData>,
@@ -273,7 +273,7 @@ fn spawn_flora_on_map_data_insertion(
             spawn_flora(
                 &mut commands,
                 &assets,
-                &mut meshes,
+                &effects,
                 &mut materials,
                 &images,
                 pos,
@@ -315,6 +315,7 @@ impl Plugin for MapFloraPlugin {
                     ),
                     spawn_flora_on_map_data_insertion.run_if(
                         resource_exists::<GameAssets>
+                            .and(resource_exists::<EffectAssets>)
                             .and(resource_exists::<MapData>)
                             .and(run_once),
                     ),
