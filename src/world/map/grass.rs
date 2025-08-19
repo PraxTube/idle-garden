@@ -1,7 +1,11 @@
 use bevy::{
     color::palettes::css::RED,
     prelude::*,
-    render::render_resource::{AsBindGroup, ShaderRef},
+    render::{
+        mesh::MeshTag,
+        render_resource::{AsBindGroup, ShaderRef},
+        storage::ShaderStorageBuffer,
+    },
     sprite::{AlphaMode2d, Material2d, Material2dPlugin},
     text::FontSmoothing,
 };
@@ -56,8 +60,8 @@ pub struct CutTallGrass {
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct GrassMaterial {
-    #[uniform(0)]
-    pub texel_size_and_timestamps: Vec4,
+    #[storage(0, read_only)]
+    pub timestamps: Handle<ShaderStorageBuffer>,
     #[texture(1)]
     #[sampler(2)]
     pub texture: Option<Handle<Image>>,
@@ -88,6 +92,10 @@ impl NumberPopUp {
 }
 
 impl Material2d for GrassMaterial {
+    fn vertex_shader() -> ShaderRef {
+        GRASS_SHADER.into()
+    }
+
     fn fragment_shader() -> ShaderRef {
         GRASS_SHADER.into()
     }
@@ -101,15 +109,19 @@ fn spawn_tall_grass(
     commands: &mut Commands,
     assets: &GameAssets,
     effects: &EffectAssets,
-    materials: &mut Assets<GrassMaterial>,
     images: &Assets<Image>,
     pos: Vec2,
+    index: u32,
 ) {
     let image_handle = assets.grass.clone();
     let Some(image) = images.get(&image_handle) else {
         error!("failed to get grass image from handle, must never happen!");
         return;
     };
+
+    if index >= 16384 {
+        error!("you have more than 16384 grass blades, must never happen! Big trouble!");
+    }
 
     let image_size = Vec2::new(image.width() as f32, image.height() as f32);
 
@@ -118,54 +130,24 @@ fn spawn_tall_grass(
         YSort(0.0),
         Transform::from_translation(pos.extend(0.0)).with_scale(image_size.extend(1.0)),
         Mesh2d(effects.rect_mesh.clone()),
-        MeshMaterial2d(
-            materials
-                .add(GrassMaterial {
-                    texel_size_and_timestamps: (1.0 / image_size).extend(-10.0).extend(-10.0),
-                    texture: Some(image_handle.clone()),
-                    discrete_sine: Some(assets.discrete_sine_texture.clone()),
-                    discrete_exp_damp: Some(assets.discrete_exp_damp_texture.clone()),
-                })
-                .clone(),
-        ),
+        MeshMaterial2d(effects.grass_material.clone()),
+        MeshTag(index % 16384),
         StaticSensorAABB::new(8.0, 8.0),
         GRASS_COLLISION_GROUPS,
     ));
-}
-
-fn spawn_tall_grass_in_quads(
-    commands: &mut Commands,
-    assets: &GameAssets,
-    effects: &EffectAssets,
-    materials: &mut Assets<GrassMaterial>,
-    images: &Assets<Image>,
-    center_pos: Vec2,
-) {
-    let mut rng = thread_rng();
-    let mut threshold = 0.35;
-    for offset in QUAD_OFFSETS {
-        let threshold_check = rng.gen_range(0.0..1.0);
-
-        if threshold_check > threshold {
-            threshold += 0.3;
-            continue;
-        }
-
-        let random_shift = Vec2::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
-        let pos = center_pos + offset + random_shift * QUAD_MAX_SHIFT_OFFSET;
-        spawn_tall_grass(commands, assets, effects, materials, images, pos);
-    }
 }
 
 fn spawn_grass(
     mut commands: Commands,
     assets: Res<GameAssets>,
     effects: Res<EffectAssets>,
-    mut materials: ResMut<Assets<GrassMaterial>>,
     images: Res<Assets<Image>>,
     map_data: Res<MapData>,
 ) {
     let size = (MAP_SIZE / 2) as i32;
+    let mut rng = thread_rng();
+    let mut index = 0;
+
     for i in -size..size {
         for j in -size..size {
             let center_pos = Vec2::new(i as f32 * TILE_SIZE, j as f32 * TILE_SIZE);
@@ -175,14 +157,20 @@ fn spawn_grass(
                 continue;
             }
 
-            spawn_tall_grass_in_quads(
-                &mut commands,
-                &assets,
-                &effects,
-                &mut materials,
-                &images,
-                center_pos,
-            );
+            let mut threshold = 0.35;
+            for offset in QUAD_OFFSETS {
+                let threshold_check = rng.gen_range(0.0..1.0);
+
+                if threshold_check > threshold {
+                    threshold += 0.3;
+                    continue;
+                }
+
+                let random_shift = Vec2::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
+                let pos = center_pos + offset + random_shift * QUAD_MAX_SHIFT_OFFSET;
+                spawn_tall_grass(&mut commands, &assets, &effects, &images, pos, index);
+                index += 1;
+            }
         }
     }
 }
@@ -191,7 +179,6 @@ fn respawn_grass_on_reset(
     mut commands: Commands,
     assets: Res<GameAssets>,
     effects: Res<EffectAssets>,
-    materials: ResMut<Assets<GrassMaterial>>,
     images: Res<Assets<Image>>,
     map_data: Res<MapData>,
     q_grass: Query<Entity, With<TallGrass>>,
@@ -208,7 +195,7 @@ fn respawn_grass_on_reset(
         commands.entity(entity).despawn();
     }
 
-    spawn_grass(commands, assets, effects, materials, images, map_data);
+    spawn_grass(commands, assets, effects, images, map_data);
 }
 
 fn despawn_tall_grass(mut commands: Commands, mut ev_cut_tall_grass: EventReader<CutTallGrass>) {
@@ -347,10 +334,19 @@ fn despawn_number_pop_ups(mut commands: Commands, q_pop_ups: Query<(Entity, &Num
 
 fn set_grass_timestamps(
     time: Res<Time>,
+    mut effects: ResMut<EffectAssets>,
     mut materials: ResMut<Assets<GrassMaterial>>,
+    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
     q_player: Query<(&Transform, &Velocity, &DynamicCollider), With<Player>>,
-    q_grass: Query<(&Transform, &MeshMaterial2d<GrassMaterial>), Without<Player>>,
+    q_grass: Query<(&Transform, &MeshTag), (With<MeshMaterial2d<GrassMaterial>>, Without<Player>)>,
 ) {
+    let Some(material) = materials.get_mut(&effects.grass_material) else {
+        return;
+    };
+    let Some(buffer) = buffers.get_mut(&material.timestamps) else {
+        return;
+    };
+
     let Ok((player_transform, player_velocity, player_collider)) = q_player.single() else {
         return;
     };
@@ -362,33 +358,35 @@ fn set_grass_timestamps(
 
     let player_pos = player_transform.translation.xy() + player_collider.offset;
 
-    for (grass_transform, material_handle) in &q_grass {
+    let timestamps = &mut effects.grass_material_timestamps;
+
+    for (grass_transform, mesh_tag) in &q_grass {
         let grass_pos = grass_transform.translation.xy();
 
         if player_pos.distance_squared(grass_pos) > (player_collider.radius + 15.0).powi(2) {
             continue;
         }
 
-        let Some(grass_material) = materials.get_mut(material_handle) else {
-            continue;
-        };
+        let cell = &mut timestamps[mesh_tag.0 as usize % 16384];
 
         let current_time = time.elapsed_secs();
-        let time_diff = current_time - grass_material.texel_size_and_timestamps.w;
+        let time_diff = current_time - cell[1];
         debug_assert!(time_diff > 0.0);
 
         // Set exp damp timestamp
-        grass_material.texel_size_and_timestamps.w = current_time;
+        cell[1] = current_time;
 
         // Set sine timestamp
         if time_diff > TIME_TILL_SINE_RESET {
             if player_pos.x < grass_pos.x {
-                grass_material.texel_size_and_timestamps.z = -current_time;
+                cell[0] = -current_time;
             } else {
-                grass_material.texel_size_and_timestamps.z = current_time;
+                cell[0] = current_time;
             }
         }
     }
+
+    buffer.set_data(timestamps.as_slice());
 }
 
 fn spawn_background_grass_tile(commands: &mut Commands, assets: &GameAssets, pos: Vec2) {
@@ -449,6 +447,9 @@ impl Plugin for MapGrassPlugin {
                     .chain()
                     .before(ProgressionSystemSet),
             )
-            .add_systems(PostUpdate, set_grass_timestamps);
+            .add_systems(
+                PostUpdate,
+                set_grass_timestamps.run_if(resource_exists::<EffectAssets>),
+            );
     }
 }

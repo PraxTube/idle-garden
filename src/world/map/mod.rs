@@ -15,7 +15,7 @@ use wasm_bindgen::prelude::*;
 
 pub use building::{Blueprint, BuildingSystemSet};
 pub use flora::Flora;
-pub use grass::CutTallGrass;
+pub use grass::{CutTallGrass, GrassMaterial};
 pub use telemetry::GameTelemetryManager;
 
 #[cfg(not(target_arch = "wasm32"))]

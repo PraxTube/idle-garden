@@ -2,10 +2,12 @@ mod events;
 
 pub use events::PlayerFootstepEvent;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, render::storage::ShaderStorageBuffer};
 use bevy_asset_loader::prelude::*;
 use bevy_enoki::prelude::*;
 use bevy_trickfilm::prelude::*;
+
+use crate::world::GrassMaterial;
 
 pub const APIKEY: &str = include_str!("../../apikey.env");
 
@@ -171,29 +173,29 @@ pub struct EffectAssets {
     pub cut_grass_material: Handle<SpriteParticle2dMaterial>,
     pub cut_grass_particles: Handle<Particle2dEffect>,
     pub rect_mesh: Handle<Mesh>,
+    pub grass_material: Handle<GrassMaterial>,
+    pub grass_material_timestamps: [[f32; 4]; 16834],
 }
 
 impl FromWorld for EffectAssets {
     fn from_world(world: &mut World) -> Self {
+        let default_self_on_error = Self {
+            cut_grass_material: Handle::<SpriteParticle2dMaterial>::default(),
+            cut_grass_particles: Handle::<Particle2dEffect>::default(),
+            rect_mesh: Handle::<Mesh>::default(),
+            grass_material: Handle::<GrassMaterial>::default(),
+            grass_material_timestamps: [[0.0; 4]; 16834],
+        };
+
         let Some(mut meshes) = world.get_resource_mut::<Assets<Mesh>>() else {
-            return {
-                Self {
-                    cut_grass_material: Handle::<SpriteParticle2dMaterial>::default(),
-                    cut_grass_particles: Handle::<Particle2dEffect>::default(),
-                    rect_mesh: Handle::<Mesh>::default(),
-                }
-            };
+            return default_self_on_error;
         };
         let rect_mesh = meshes.add(Rectangle::default());
 
         let testy_particles = world.load_asset(CUT_GRASS_PARTICLES_FILE);
         let Some(assets) = world.get_resource::<GameAssets>() else {
             error!("failed to get GameAssets, must be exist at this point");
-            return Self {
-                cut_grass_material: Handle::<SpriteParticle2dMaterial>::default(),
-                cut_grass_particles: Handle::<Particle2dEffect>::default(),
-                rect_mesh: rect_mesh.clone(),
-            };
+            return default_self_on_error;
         };
 
         let handle = assets.grass_snippet.clone();
@@ -201,20 +203,45 @@ impl FromWorld for EffectAssets {
         let Some(mut particles) = world.get_resource_mut::<Assets<SpriteParticle2dMaterial>>()
         else {
             error!("failed to get Assets<SpriteParticle2dMaterial>, must be exist at this point");
-            return Self {
-                cut_grass_material: Handle::<SpriteParticle2dMaterial>::default(),
-                cut_grass_particles: Handle::<Particle2dEffect>::default(),
-                rect_mesh: rect_mesh.clone(),
-            };
+            return default_self_on_error;
         };
 
         let default_particle_material =
             particles.add(SpriteParticle2dMaterial::from_texture(handle));
 
+        let Some(mut buffers) = world.get_resource_mut::<Assets<ShaderStorageBuffer>>() else {
+            error!("failed to get Assets<ShaderStorageBuffer>, must be exist at this point");
+            return default_self_on_error;
+        };
+
+        let timestamps_buffer: Vec<[f32; 4]> = vec![[0.0, 0.0, 0.0, 0.0]; 16834];
+        let timestamps = buffers.add(ShaderStorageBuffer::from(timestamps_buffer));
+
+        let Some(assets) = world.get_resource::<GameAssets>() else {
+            error!("failed to get GameAssets, must be exist at this point");
+            return default_self_on_error;
+        };
+
+        let raw_grass_material = GrassMaterial {
+            timestamps,
+            texture: Some(assets.grass.clone()),
+            discrete_sine: Some(assets.discrete_sine_texture.clone()),
+            discrete_exp_damp: Some(assets.discrete_exp_damp_texture.clone()),
+        };
+
+        let Some(mut grass_materials) = world.get_resource_mut::<Assets<GrassMaterial>>() else {
+            error!("failed to get Assets<GrassMaterial>, must be exist at this point");
+            return default_self_on_error;
+        };
+
+        let grass_material = grass_materials.add(raw_grass_material);
+
         Self {
             cut_grass_material: default_particle_material,
             cut_grass_particles: testy_particles,
-            rect_mesh: rect_mesh.clone(),
+            rect_mesh,
+            grass_material,
+            grass_material_timestamps: [[0.0; 4]; 16834],
         }
     }
 }
