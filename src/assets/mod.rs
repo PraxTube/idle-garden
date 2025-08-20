@@ -2,7 +2,7 @@ mod events;
 
 pub use events::PlayerFootstepEvent;
 
-use bevy::{prelude::*, render::storage::ShaderStorageBuffer};
+use bevy::{asset::RenderAssetUsages, prelude::*};
 use bevy_asset_loader::prelude::*;
 use bevy_enoki::prelude::*;
 use bevy_trickfilm::prelude::*;
@@ -174,7 +174,7 @@ pub struct EffectAssets {
     pub cut_grass_particles: Handle<Particle2dEffect>,
     pub rect_mesh: Handle<Mesh>,
     pub grass_material: Handle<GrassMaterial>,
-    pub grass_material_timestamps: [[f32; 4]; 16834],
+    pub grass_material_timestamps: Handle<Image>,
 }
 
 impl FromWorld for EffectAssets {
@@ -184,7 +184,7 @@ impl FromWorld for EffectAssets {
             cut_grass_particles: Handle::<Particle2dEffect>::default(),
             rect_mesh: Handle::<Mesh>::default(),
             grass_material: Handle::<GrassMaterial>::default(),
-            grass_material_timestamps: [[0.0; 4]; 16834],
+            grass_material_timestamps: Handle::<Image>::default(),
         };
 
         let Some(mut meshes) = world.get_resource_mut::<Assets<Mesh>>() else {
@@ -209,13 +209,24 @@ impl FromWorld for EffectAssets {
         let default_particle_material =
             particles.add(SpriteParticle2dMaterial::from_texture(handle));
 
-        let Some(mut buffers) = world.get_resource_mut::<Assets<ShaderStorageBuffer>>() else {
-            error!("failed to get Assets<ShaderStorageBuffer>, must be exist at this point");
+        let Some(mut images) = world.get_resource_mut::<Assets<Image>>() else {
+            error!("failed to get Assets<Image>, must be exist at this point");
             return default_self_on_error;
         };
 
-        let timestamps_buffer: Vec<[f32; 4]> = vec![[0.0, 0.0, 0.0, 0.0]; 16834];
-        let timestamps = buffers.add(ShaderStorageBuffer::from(timestamps_buffer));
+        let timestamps_image = Image::new_fill(
+            bevy::render::render_resource::Extent3d {
+                width: 4096,
+                height: 8,
+                depth_or_array_layers: 1,
+            },
+            bevy::render::render_resource::TextureDimension::D2,
+            &f32::to_ne_bytes(-10.0),
+            bevy::render::render_resource::TextureFormat::R32Float,
+            RenderAssetUsages::default(),
+        );
+
+        let timestamps_handle = images.add(timestamps_image);
 
         let Some(assets) = world.get_resource::<GameAssets>() else {
             error!("failed to get GameAssets, must be exist at this point");
@@ -223,10 +234,10 @@ impl FromWorld for EffectAssets {
         };
 
         let raw_grass_material = GrassMaterial {
-            timestamps,
             texture: Some(assets.grass.clone()),
             discrete_sine: Some(assets.discrete_sine_texture.clone()),
             discrete_exp_damp: Some(assets.discrete_exp_damp_texture.clone()),
+            timestamps: Some(timestamps_handle.clone()),
         };
 
         let Some(mut grass_materials) = world.get_resource_mut::<Assets<GrassMaterial>>() else {
@@ -241,7 +252,7 @@ impl FromWorld for EffectAssets {
             cut_grass_particles: testy_particles,
             rect_mesh,
             grass_material,
-            grass_material_timestamps: [[0.0; 4]; 16834],
+            grass_material_timestamps: timestamps_handle,
         }
     }
 }

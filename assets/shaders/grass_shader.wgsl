@@ -7,16 +7,14 @@ const AMPLITUDE: f32 = 12.0;
 const TIME_SCALE_SINE: f32 = 1.0;
 const TIME_SCALE_EXP: f32 = 0.4;
 
-// First element is sine timestamp, second element is exp timestamp.
-// Padded to 16 bytes for WASM (note sure if that is actually required here, but just to be safe).
-@group(2) @binding(0) var<storage, read> timestamps: array<vec4<f32>, 16384>;
-
 @group(2) @binding(1) var texture: texture_2d<f32>;
 @group(2) @binding(2) var texture_sampler: sampler;
 @group(2) @binding(3) var sine_texture: texture_2d<f32>;
 @group(2) @binding(4) var sine_sampler: sampler;
 @group(2) @binding(5) var exp_texture: texture_2d<f32>;
 @group(2) @binding(6) var exp_sampler: sampler;
+@group(2) @binding(7) var timestamps_texture: texture_2d<f32>;
+@group(2) @binding(8) var timestamps_texture_sampler: sampler;
 
 struct Vertex {
     @builtin(instance_index) instance_index: u32,
@@ -52,10 +50,19 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 
 @fragment
 fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
+    let timestamp_dim = textureDimensions(timestamps_texture);
+    let x = mesh.index % timestamp_dim.x;
+    let y = mesh.index / timestamp_dim.x;
+
+    let sine_timestamp_uv = vec2<f32>(f32(x) / f32(timestamp_dim.x), f32(y) / f32(timestamp_dim.y));
+    let sine_raw = textureSample(timestamps_texture, timestamps_texture_sampler, sine_timestamp_uv).x;
+    let sine_timestamp = abs(sine_raw);
+    let sine_sign = sign(sine_raw);
+
+    let exp_timestamp_uv = vec2<f32>(sine_timestamp_uv.x, sine_timestamp_uv.y + 0.5);
+    let exp_timestamp = textureSample(timestamps_texture, timestamps_texture_sampler, exp_timestamp_uv).x;
+
     let texel_size = 1.0 / vec2<f32>(textureDimensions(texture));
-    let sine_timestamp = abs(timestamps[mesh.index % 16384].x);
-    let sine_sign = sign(timestamps[mesh.index].x);
-    let exp_timestamp = timestamps[mesh.index].y;
     let snapped_mesh_uv = floor(mesh.uv / texel_size) * texel_size;
 
     let sine_t = fract((globals.time - sine_timestamp) * TIME_SCALE_SINE);
@@ -67,7 +74,6 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
         return textureSample(texture, texture_sampler, mesh.uv);
     }
     let exp = textureSample(exp_texture, exp_sampler, vec2(exp_t, 0.0)).x;
-
 
     let noise_offset = exp * AMPLITUDE * sine;
     let snapped_offset = floor(noise_offset / texel_size) * texel_size;

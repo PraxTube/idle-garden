@@ -4,7 +4,6 @@ use bevy::{
     render::{
         mesh::MeshTag,
         render_resource::{AsBindGroup, ShaderRef},
-        storage::ShaderStorageBuffer,
     },
     sprite::{AlphaMode2d, Material2d, Material2dPlugin},
     text::FontSmoothing,
@@ -60,8 +59,6 @@ pub struct CutTallGrass {
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct GrassMaterial {
-    #[storage(0, read_only)]
-    pub timestamps: Handle<ShaderStorageBuffer>,
     #[texture(1)]
     #[sampler(2)]
     pub texture: Option<Handle<Image>>,
@@ -71,6 +68,9 @@ pub struct GrassMaterial {
     #[texture(5)]
     #[sampler(6)]
     pub discrete_exp_damp: Option<Handle<Image>>,
+    #[texture(7)]
+    #[sampler(8)]
+    pub timestamps: Option<Handle<Image>>,
 }
 
 impl Default for NumberPopUp {
@@ -119,8 +119,8 @@ fn spawn_tall_grass(
         return;
     };
 
-    if index >= 16384 {
-        error!("you have more than 16384 grass blades, must never happen! Big trouble!");
+    if index >= 4 * 4096 {
+        error!("you have more than 4 * 4096 grass blades, must never happen! Big trouble!");
     }
 
     let image_size = Vec2::new(image.width() as f32, image.height() as f32);
@@ -131,7 +131,7 @@ fn spawn_tall_grass(
         Transform::from_translation(pos.extend(0.0)).with_scale(image_size.extend(1.0)),
         Mesh2d(effects.rect_mesh.clone()),
         MeshMaterial2d(effects.grass_material.clone()),
-        MeshTag(index % 16384),
+        MeshTag(index % (4 * 4096)),
         StaticSensorAABB::new(8.0, 8.0),
         GRASS_COLLISION_GROUPS,
     ));
@@ -334,16 +334,13 @@ fn despawn_number_pop_ups(mut commands: Commands, q_pop_ups: Query<(Entity, &Num
 
 fn set_grass_timestamps(
     time: Res<Time>,
-    mut effects: ResMut<EffectAssets>,
+    effects: Res<EffectAssets>,
+    mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<GrassMaterial>>,
-    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
     q_player: Query<(&Transform, &Velocity, &DynamicCollider), With<Player>>,
-    q_grass: Query<(&Transform, &MeshTag), (With<MeshMaterial2d<GrassMaterial>>, Without<Player>)>,
+    q_grass: Query<(&Transform, &MeshTag, &MeshMaterial2d<GrassMaterial>), Without<Player>>,
 ) {
-    let Some(material) = materials.get_mut(&effects.grass_material) else {
-        return;
-    };
-    let Some(buffer) = buffers.get_mut(&material.timestamps) else {
+    let Some(timestamps_image) = images.get_mut(&effects.grass_material_timestamps) else {
         return;
     };
 
@@ -355,38 +352,59 @@ fn set_grass_timestamps(
     if player_velocity.0 == Vec2::ZERO {
         return;
     }
-
     let player_pos = player_transform.translation.xy() + player_collider.offset;
 
-    let timestamps = &mut effects.grass_material_timestamps;
+    let Some(mut new_data) = timestamps_image.data.clone() else {
+        return;
+    };
 
-    for (grass_transform, mesh_tag) in &q_grass {
+    for (grass_transform, mesh_tag, grass_material) in &q_grass {
+        debug_assert!(mesh_tag.0 <= 4 * 4096, "{}", mesh_tag.0);
+
+        let Some(grass_mat) = materials.get(&grass_material.0) else {
+            continue;
+        };
+        let Some(ref timestamps_handle_on_grass_material) = grass_mat.timestamps else {
+            continue;
+        };
+
+        debug_assert_eq!(
+            timestamps_handle_on_grass_material,
+            &effects.grass_material_timestamps
+        );
+
         let grass_pos = grass_transform.translation.xy();
-
         if player_pos.distance_squared(grass_pos) > (player_collider.radius + 15.0).powi(2) {
             continue;
         }
 
-        let cell = &mut timestamps[mesh_tag.0 as usize % 16384];
+        debug_assert!(timestamps_image.height() % 2 == 0);
+        let x = mesh_tag.0 % timestamps_image.width();
+        let y = mesh_tag.0 / timestamps_image.width();
+        let idx = 4 * (x + y * timestamps_image.width()) as usize;
+
+        let exp_y = (mesh_tag.0 / timestamps_image.width()) + timestamps_image.height() / 2;
+        let exp_idx = 4 * (x + exp_y * timestamps_image.width()) as usize;
+        let exp_bytes = &new_data[exp_idx..exp_idx + 4];
+        let exp_timestamp = f32::from_ne_bytes(exp_bytes.try_into().unwrap_or_default());
 
         let current_time = time.elapsed_secs();
-        let time_diff = current_time - cell[1];
-        debug_assert!(time_diff > 0.0);
+        let time_diff = current_time - exp_timestamp;
+        debug_assert!(time_diff > 0.0, "{}, {}", current_time, exp_timestamp);
 
-        // Set exp damp timestamp
-        cell[1] = current_time;
-
-        // Set sine timestamp
         if time_diff > TIME_TILL_SINE_RESET {
-            if player_pos.x < grass_pos.x {
-                cell[0] = -current_time;
+            let new_timestamp = if player_pos.x < grass_pos.x {
+                -current_time
             } else {
-                cell[0] = current_time;
-            }
+                current_time
+            };
+            new_data[idx..idx + 4].copy_from_slice(&new_timestamp.to_ne_bytes());
         }
-    }
 
-    buffer.set_data(timestamps.as_slice());
+        new_data[exp_idx..exp_idx + 4].copy_from_slice(&current_time.to_ne_bytes());
+    }
+    timestamps_image.data = Some(new_data);
+    materials.get_mut(&effects.grass_material);
 }
 
 fn spawn_background_grass_tile(commands: &mut Commands, assets: &GameAssets, pos: Vec2) {
@@ -396,7 +414,16 @@ fn spawn_background_grass_tile(commands: &mut Commands, assets: &GameAssets, pos
     ));
 }
 
-fn spawn_background_grass_tiles(mut commands: Commands, assets: Res<GameAssets>) {
+fn spawn_background_grass_tiles(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    effects: Res<EffectAssets>,
+) {
+    commands.spawn((
+        Sprite::from_image(effects.grass_material_timestamps.clone()),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 1000.0)),
+    ));
+
     let i_map_size = MAP_SIZE as i32 / 6;
     for i in -i_map_size..i_map_size {
         for j in -i_map_size..i_map_size {
