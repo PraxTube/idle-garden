@@ -62,25 +62,29 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let exp_timestamp_uv = vec2<f32>(sine_timestamp_uv.x, sine_timestamp_uv.y + 0.5);
     let exp_timestamp = textureSample(timestamps_texture, timestamps_texture_sampler, exp_timestamp_uv).x;
 
-    let texel_size = 1.0 / vec2<f32>(textureDimensions(texture));
-    let snapped_mesh_uv = floor(mesh.uv / texel_size) * texel_size;
-
-    let sine_t = fract((globals.time - sine_timestamp) * TIME_SCALE_SINE);
-    let raw_sine = textureSample(sine_texture, sine_sampler, vec2(sine_t, 0.0)).x;
-    let sine = sine_sign * (raw_sine - 0.5) * 2.0 * (1.0 - snapped_mesh_uv.y - texel_size.y);
-
     let exp_t = (globals.time - exp_timestamp) * TIME_SCALE_EXP;
     if exp_t > 1.0 {
         return textureSample(texture, texture_sampler, mesh.uv);
     }
     let exp = textureSample(exp_texture, exp_sampler, vec2(exp_t, 0.0)).x;
 
+    if exp <= 0.1 {
+        return textureSample(texture, texture_sampler, mesh.uv);
+    }
+
+    let texel_size = 1.0 / vec2<f32>(textureDimensions(texture));
+    let snapped_mesh_uv = (floor(mesh.uv / texel_size) + 0.5) * texel_size;
+
+    let sine_t = fract((globals.time - sine_timestamp) * TIME_SCALE_SINE);
+    let raw_sine = textureSample(sine_texture, sine_sampler, vec2(sine_t, 0.0)).x;
+    let sine = sine_sign * (raw_sine - 0.5) * 2.0 * (1.0 - snapped_mesh_uv.y - texel_size.y);
+
     let noise_offset = exp * AMPLITUDE * sine;
-    let snapped_offset = floor(noise_offset / texel_size) * texel_size;
+    let snapped_offset = (floor(noise_offset / texel_size.x) + 0.5) * texel_size.x;
     // We scale by the texel size so that the distortion isn't relative to the size,
     // this means that a 1 pixel shift is the same on a 16x16 texture just as it would be on a 120x120 texture.
-    let offset = snapped_offset * texel_size;
+    let offset = snapped_offset * texel_size.x;
 
-    let uv = fract(snapped_mesh_uv + vec2(offset.x, 0.0));
+    let uv = fract(snapped_mesh_uv + vec2(offset, 0.0));
     return textureSample(texture, texture_sampler, uv);
 }

@@ -414,16 +414,7 @@ fn spawn_background_grass_tile(commands: &mut Commands, assets: &GameAssets, pos
     ));
 }
 
-fn spawn_background_grass_tiles(
-    mut commands: Commands,
-    assets: Res<GameAssets>,
-    effects: Res<EffectAssets>,
-) {
-    commands.spawn((
-        Sprite::from_image(effects.grass_material_timestamps.clone()),
-        Transform::from_translation(Vec3::new(0.0, 0.0, 1000.0)),
-    ));
-
+fn spawn_background_grass_tiles(mut commands: Commands, assets: Res<GameAssets>) {
     let i_map_size = MAP_SIZE as i32 / 6;
     for i in -i_map_size..i_map_size {
         for j in -i_map_size..i_map_size {
