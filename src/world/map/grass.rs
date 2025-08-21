@@ -11,7 +11,7 @@ use bevy::{
 use rand::{thread_rng, Rng};
 
 use crate::{
-    assets::GRASS_SHADER,
+    assets::{GRASS_SHADER, HALF_HEIGHT_GRASS_TIMESTAMPS_IMAGE},
     player::Player,
     ui::{MenuAction, MenuActionEvent},
     world::{
@@ -34,6 +34,7 @@ use super::{
 // in other words when the grass is not moving through player shake.
 const TIME_TILL_SINE_RESET: f32 = 1.5;
 const OFFLINE_PROGRESSION_NUMBER_POP_UP_OFFSET: Vec2 = Vec2::new(0.0, 20.0);
+const HALFED_TILE_SIZE: f32 = TILE_SIZE * 0.5;
 
 const QUAD_MAX_SHIFT_OFFSET: f32 = 3.0;
 const QUAD_OFFSETS: [Vec2; 4] = [
@@ -41,6 +42,12 @@ const QUAD_OFFSETS: [Vec2; 4] = [
     Vec2::new(TILE_SIZE * 0.25, -TILE_SIZE * 0.25),
     Vec2::new(-TILE_SIZE * 0.25, -TILE_SIZE * 0.25),
     Vec2::new(-TILE_SIZE * 0.25, TILE_SIZE * 0.25),
+];
+const SUB_QUAD_OFFSETS: [Vec2; 4] = [
+    Vec2::new(HALFED_TILE_SIZE * 0.25, HALFED_TILE_SIZE * 0.25),
+    Vec2::new(HALFED_TILE_SIZE * 0.25, -HALFED_TILE_SIZE * 0.25),
+    Vec2::new(-HALFED_TILE_SIZE * 0.25, -HALFED_TILE_SIZE * 0.25),
+    Vec2::new(-HALFED_TILE_SIZE * 0.25, HALFED_TILE_SIZE * 0.25),
 ];
 
 #[derive(Component)]
@@ -119,8 +126,11 @@ fn spawn_tall_grass(
         return;
     };
 
-    if index >= 4 * 4096 {
-        error!("you have more than 4 * 4096 grass blades, must never happen! Big trouble!");
+    if index >= HALF_HEIGHT_GRASS_TIMESTAMPS_IMAGE * 4096 {
+        error!(
+            "you have more than {} * 4096 grass blades, must never happen! Big trouble! index: {}",
+            HALF_HEIGHT_GRASS_TIMESTAMPS_IMAGE, index
+        );
     }
 
     let image_size = Vec2::new(image.width() as f32, image.height() as f32);
@@ -131,7 +141,7 @@ fn spawn_tall_grass(
         Transform::from_translation(pos.extend(0.0)).with_scale(image_size.extend(1.0)),
         Mesh2d(effects.rect_mesh.clone()),
         MeshMaterial2d(effects.grass_material.clone()),
-        MeshTag(index % (4 * 4096)),
+        MeshTag(index % (HALF_HEIGHT_GRASS_TIMESTAMPS_IMAGE * 4096)),
         StaticSensorAABB::new(8.0, 8.0),
         GRASS_COLLISION_GROUPS,
     ));
@@ -159,17 +169,21 @@ fn spawn_grass(
 
             let mut threshold = 0.35;
             for offset in QUAD_OFFSETS {
-                let threshold_check = rng.gen_range(0.0..1.0);
+                for sub_offset in SUB_QUAD_OFFSETS {
+                    let threshold_check = rng.gen_range(0.0..1.0);
 
-                if threshold_check > threshold {
-                    threshold += 0.3;
-                    continue;
+                    if threshold_check > threshold {
+                        threshold += 0.3;
+                        continue;
+                    }
+
+                    let random_shift =
+                        Vec2::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
+                    let pos =
+                        center_pos + offset + sub_offset + random_shift * QUAD_MAX_SHIFT_OFFSET;
+                    spawn_tall_grass(&mut commands, &assets, &effects, &images, pos, index);
+                    index += 1;
                 }
-
-                let random_shift = Vec2::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
-                let pos = center_pos + offset + random_shift * QUAD_MAX_SHIFT_OFFSET;
-                spawn_tall_grass(&mut commands, &assets, &effects, &images, pos, index);
-                index += 1;
             }
         }
     }
@@ -359,7 +373,11 @@ fn set_grass_timestamps(
     };
 
     for (grass_transform, mesh_tag, grass_material) in &q_grass {
-        debug_assert!(mesh_tag.0 <= 4 * 4096, "{}", mesh_tag.0);
+        debug_assert!(
+            mesh_tag.0 <= HALF_HEIGHT_GRASS_TIMESTAMPS_IMAGE * 4096,
+            "{}",
+            mesh_tag.0
+        );
 
         let Some(grass_mat) = materials.get(&grass_material.0) else {
             continue;

@@ -22,7 +22,7 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-const MOVE_SPEED: f32 = 200.0;
+const MOVE_SPEED: f32 = 125.0;
 
 #[derive(Component, Default)]
 pub struct Player {

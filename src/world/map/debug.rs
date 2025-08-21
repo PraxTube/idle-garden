@@ -1,4 +1,4 @@
-use bevy::{color::palettes::css::RED, prelude::*, text::FontSmoothing};
+use bevy::{prelude::*, text::FontSmoothing};
 
 use crate::{
     player::Player,
@@ -6,7 +6,7 @@ use crate::{
     GameAssets,
 };
 
-use super::{MapData, ZLevel, EMPTY_CELL_VALUE, PLAYER_BLOCKED_CELL_VALUE, TALL_GRASS_CELL_VALUE};
+use super::{MapData, ZLevel, EMPTY_CELL_VALUE, TALL_GRASS_CELL_VALUE};
 
 const DEBUG_GRID_SIZE: usize = 50;
 
@@ -44,8 +44,6 @@ fn spawn_grid_debug_visuals(
                 ("E".to_string(), Color::WHITE.with_alpha(0.5))
             } else if index == TALL_GRASS_CELL_VALUE {
                 ("G".to_string(), Color::WHITE.with_alpha(0.75))
-            } else if index == PLAYER_BLOCKED_CELL_VALUE {
-                ("P".to_string(), RED.into())
             } else {
                 (format!("{:X}", index), Color::WHITE)
             };

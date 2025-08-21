@@ -11,11 +11,11 @@ use crate::{
 
 use super::Player;
 
-pub const COLLIDER_RADIUS: f32 = 5.0;
-pub const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -25.0);
+pub const COLLIDER_RADIUS: f32 = 2.5;
+pub const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -12.5);
 pub const DEFAULT_PLAYER_SPAWN_POS: Vec2 = Vec2::ZERO;
 
-const SCYTHE_OFFSET: Vec3 = Vec3::new(-50.0, 0.0, 0.0);
+const SCYTHE_OFFSET: Vec3 = Vec3::new(-25.0, 0.0, 0.0);
 
 #[derive(Component)]
 pub struct Scythe {
@@ -36,7 +36,7 @@ fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec
             Velocity::default(),
             DynamicCollider::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
             StaticSensorCircle::new(COLLIDER_RADIUS, COLLIDER_OFFSET),
-            YSort(24.0),
+            YSort(10.0),
             Visibility::Inherited,
             Transform::from_translation(pos.extend(0.0)),
         ))
@@ -44,7 +44,7 @@ fn spawn_player_from_args(commands: &mut Commands, assets: &GameAssets, pos: Vec
 
     commands.spawn((
         ChildOf(root),
-        Transform::from_translation(Vec3::new(0.0, -30.0, -10.0)),
+        Transform::from_translation(Vec3::new(0.0, -15.0, -10.0)).with_scale(Vec3::splat(0.5)),
         Sprite::from_image(assets.player_shadow.clone()),
     ));
 

@@ -4,7 +4,7 @@ mod intersection;
 mod response;
 mod structs;
 
-pub use intersection::{intersection_aabb_circle, IntersectionEvent};
+pub use intersection::IntersectionEvent;
 pub use structs::*;
 
 use bevy::{color::palettes::css::BLUE, prelude::*};

@@ -18,10 +18,7 @@ use crate::{
     BachelorBuild, EffectAssets, GameAssets,
 };
 
-use super::{
-    ItemBought, MapData, EMPTY_CELL_VALUE, MAP_SIZE, PLAYER_BLOCKED_CELL_VALUE,
-    TALL_GRASS_CELL_VALUE,
-};
+use super::{ItemBought, MapData, EMPTY_CELL_VALUE, MAP_SIZE, TALL_GRASS_CELL_VALUE};
 
 #[derive(Deserialize, Clone, Default)]
 pub struct FloraData {
@@ -263,7 +260,6 @@ fn spawn_flora_on_map_data_insertion(
     for x in 0..MAP_SIZE {
         for y in 0..MAP_SIZE {
             if map_data.grid_index(x, y) == EMPTY_CELL_VALUE
-                || map_data.grid_index(x, y) == PLAYER_BLOCKED_CELL_VALUE
                 || map_data.grid_index(x, y) == TALL_GRASS_CELL_VALUE
             {
                 continue;

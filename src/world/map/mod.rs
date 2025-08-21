@@ -40,11 +40,10 @@ use crate::{
     BachelorBuild,
 };
 
-use super::{collisions::intersection_aabb_circle, DynamicCollider, TILE_SIZE};
+use super::TILE_SIZE;
 
-pub const MAP_SIZE: usize = 80;
+pub const MAP_SIZE: usize = 40;
 const EMPTY_CELL_VALUE: u16 = u16::MAX;
-const PLAYER_BLOCKED_CELL_VALUE: u16 = u16::MAX - 1;
 const TALL_GRASS_CELL_VALUE: u16 = u16::MAX - 2;
 
 const DEFAULT_POINTS_CAP: u64 = 800;
@@ -98,7 +97,6 @@ impl Plugin for MapPlugin {
             (
                 update_player_pos_in_core,
                 update_map_data_on_tall_grass_cut,
-                block_grid_player_pos,
                 trigger_item_bought_on_item_pressed.run_if(resource_exists::<BachelorBuild>),
                 trigger_item_bought_on_blueprint_build.run_if(resource_exists::<BachelorBuild>),
                 update_progression_core_on_item_bought,
@@ -160,7 +158,6 @@ pub struct ProgressionCore {
 pub struct MapData {
     grid: Vec<[u16; MAP_SIZE]>,
     flora_data: Vec<FloraData>,
-    previous_player_blocked_cells: Vec<(usize, usize)>,
 }
 
 pub enum ZLevel {
@@ -217,7 +214,6 @@ impl Default for MapData {
         Self {
             grid: vec![[TALL_GRASS_CELL_VALUE; MAP_SIZE]; MAP_SIZE],
             flora_data: Self::build_flora_data(),
-            previous_player_blocked_cells: Vec::new(),
         }
     }
 }
@@ -267,6 +263,10 @@ impl MapData {
                 return MapData::default();
             };
 
+            if x >= map_data.grid.len() || y >= map_data.grid[0].len() {
+                return MapData::default();
+            }
+
             map_data.grid[x][y] = value;
         }
 
@@ -278,9 +278,7 @@ impl MapData {
 
         for x in 0..MAP_SIZE {
             for y in 0..MAP_SIZE {
-                if self.grid_index(x, y) == EMPTY_CELL_VALUE
-                    || self.grid_index(x, y) == PLAYER_BLOCKED_CELL_VALUE
-                {
+                if self.grid_index(x, y) == EMPTY_CELL_VALUE {
                     continue;
                 }
 
@@ -690,45 +688,6 @@ fn update_progression_core_on_item_bought(
         core.points -= cost.min(core.points);
         core.flora[ev.item.index()] += 1;
     }
-}
-
-fn block_grid_player_pos(
-    mut map_data: ResMut<MapData>,
-    q_player: Query<(&Transform, &DynamicCollider), With<Player>>,
-) {
-    let Ok((transform, collider)) = q_player.single() else {
-        return;
-    };
-
-    for (x, y) in map_data.previous_player_blocked_cells.clone() {
-        map_data.grid[x][y] = EMPTY_CELL_VALUE;
-    }
-
-    let pos = transform.translation.xy() + collider.offset;
-
-    let mut blocked_cells = Vec::new();
-    for x in -1..=1 {
-        for y in -1..=1 {
-            let offset = Vec2::new(TILE_SIZE * x as f32, TILE_SIZE * y as f32);
-            let (offset_x, offset_y) = map_data.pos_to_grid_indices(pos + offset);
-            let tile_pos = map_data.grid_indices_to_pos(offset_x, offset_y);
-
-            if !intersection_aabb_circle(
-                collider.radius,
-                pos,
-                0.5 * TILE_SIZE * Vec2::ONE,
-                tile_pos,
-            ) {
-                continue;
-            }
-
-            if map_data.grid[offset_x][offset_y] == EMPTY_CELL_VALUE {
-                map_data.grid[offset_x][offset_y] = PLAYER_BLOCKED_CELL_VALUE;
-                blocked_cells.push((offset_x, offset_y));
-            }
-        }
-    }
-    map_data.previous_player_blocked_cells = blocked_cells;
 }
 
 fn update_map_data_on_tall_grass_cut(

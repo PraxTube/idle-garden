@@ -16,6 +16,8 @@ pub const FLORA_SHADER: &str = "shaders/flora_shader.wgsl";
 pub const GRASS_SHADER: &str = "shaders/grass_shader.wgsl";
 pub const CLOUDS_SHADER: &str = "shaders/clouds_shader.wgsl";
 
+pub const HALF_HEIGHT_GRASS_TIMESTAMPS_IMAGE: u32 = 8;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub const MAP_DATA_FILE: &str = "assets/save/map_data";
 #[cfg(not(target_arch = "wasm32"))]
@@ -54,7 +56,7 @@ impl Plugin for GameAssetsPlugin {
 pub struct GameAssets {
     #[asset(path = "player/player.png")]
     pub player: Handle<Image>,
-    #[asset(texture_atlas_layout(tile_size_x = 64, tile_size_y = 64, columns = 12, rows = 2,))]
+    #[asset(texture_atlas_layout(tile_size_x = 48, tile_size_y = 32, columns = 12, rows = 2))]
     pub player_layout: Handle<TextureAtlasLayout>,
     #[asset(
         paths(
@@ -224,7 +226,7 @@ impl FromWorld for EffectAssets {
         let timestamps_image = Image::new_fill(
             bevy::render::render_resource::Extent3d {
                 width: 4096,
-                height: 8,
+                height: 2 * HALF_HEIGHT_GRASS_TIMESTAMPS_IMAGE,
                 depth_or_array_layers: 1,
             },
             bevy::render::render_resource::TextureDimension::D2,
