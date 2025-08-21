@@ -110,6 +110,13 @@ pub struct GameAssets {
     #[asset(path = "map/grass_background.png")]
     pub grass_background_tile: Handle<Image>,
 
+    #[asset(path = "map/building_selector.png")]
+    pub building_selector: Handle<Image>,
+    #[asset(texture_atlas_layout(tile_size_x = 64, tile_size_y = 64, columns = 2, rows = 1))]
+    pub building_selector_layout: Handle<TextureAtlasLayout>,
+    #[asset(path = "map/building_selector_animation.trickfilm.ron#main")]
+    pub building_selector_animation: Handle<AnimationClip2D>,
+
     #[asset(
         paths(
             "map/potatoe.png",

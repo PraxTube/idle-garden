@@ -115,9 +115,12 @@ impl FloraData {
         }
     }
 
-    fn collider(&self) -> StaticCollider {
+    fn collider(&self) -> Option<StaticCollider> {
         let (x, y) = self.collider_size;
-        StaticCollider::new(x, y)
+        if x == 0.0 && y == 0.0 {
+            return None;
+        }
+        Some(StaticCollider::new(x, y))
     }
 
     pub fn size_on_grid(&self) -> (usize, usize) {
@@ -161,7 +164,7 @@ fn spawn_flora(
     flora: &Flora,
     data: &FloraData,
 ) {
-    let collider = data.collider();
+    let maybe_collider = data.collider();
     let ysort = data.ysort();
     let gfx_offset = data.gfx_offset();
 
@@ -171,10 +174,13 @@ fn spawn_flora(
             Transform::from_translation(pos.extend(0.0)),
             ysort,
             Visibility::Inherited,
-            collider,
             WORLD_COLLISION_GROUPS,
         ))
         .id();
+
+    if let Some(collider) = maybe_collider {
+        commands.entity(root).insert(collider);
+    }
 
     let image_handle = flora.image(assets);
     let Some(image) = images.get(&image_handle) else {

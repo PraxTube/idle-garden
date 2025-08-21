@@ -22,7 +22,7 @@ pub use map::{
 
 use bevy::prelude::*;
 
-pub const TILE_SIZE: f32 = 16.0;
+pub const TILE_SIZE: f32 = 32.0;
 
 pub struct WorldPlugin;
 

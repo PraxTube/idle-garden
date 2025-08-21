@@ -5,9 +5,9 @@
     "exponential_growth": true,
     "pps": 1,
     "tree_shader": false,
-    "ysort": 0,
-    "gfx_offset": [0, 8],
-    "collider_size": [5, 5],
+    "ysort": -300,
+    "gfx_offset": [0, 0],
+    "collider_size": [0, 0],
     "size_on_grid": [1, 1]
   },
   "Raddish": {
@@ -16,9 +16,9 @@
     "exponential_growth": true,
     "pps": 1,
     "tree_shader": false,
-    "ysort": 0,
-    "gfx_offset": [0, 8],
-    "collider_size": [5, 5],
+    "ysort": -300,
+    "gfx_offset": [0, 0],
+    "collider_size": [0, 0],
     "size_on_grid": [1, 1]
   },
   "Carrot": {
@@ -27,9 +27,9 @@
     "exponential_growth": true,
     "pps": 1,
     "tree_shader": false,
-    "ysort": 0,
-    "gfx_offset": [0, 8],
-    "collider_size": [5, 5],
+    "ysort": -300,
+    "gfx_offset": [0, 0],
+    "collider_size": [0, 0],
     "size_on_grid": [1, 1]
   },
   "SwampTree": {

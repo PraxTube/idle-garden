@@ -8,7 +8,7 @@ use super::map::MAP_SIZE;
 use super::{DebugState, TILE_SIZE};
 
 /// The amount of pixels that the game camera will span in the height.
-const GAME_CAMERA_PROJECTION_SCALE: f32 = 250.0;
+const GAME_CAMERA_PROJECTION_SCALE: f32 = 500.0;
 const PROJECTION_FAR: f32 = 1e6;
 
 pub struct CameraPlugin;

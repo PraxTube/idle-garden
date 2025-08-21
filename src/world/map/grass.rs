@@ -415,7 +415,7 @@ fn spawn_background_grass_tile(commands: &mut Commands, assets: &GameAssets, pos
 }
 
 fn spawn_background_grass_tiles(mut commands: Commands, assets: Res<GameAssets>) {
-    let i_map_size = MAP_SIZE as i32 / 6;
+    let i_map_size = MAP_SIZE as i32 / 3;
     for i in -i_map_size..i_map_size {
         for j in -i_map_size..i_map_size {
             let pos = Vec2::new(i as f32 * 63.95, j as f32 * 63.95);

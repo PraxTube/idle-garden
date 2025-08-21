@@ -9,8 +9,8 @@ use crate::{assets::CLOUDS_SHADER, world::MainCamera, EffectAssets, GameAssets, 
 
 use super::ZLevel;
 
-const CLOUDS_NOISE_WIDTH: f32 = 512.0;
-const CLOUDS_NOISE_HEIGHT: f32 = 256.0;
+const CLOUDS_NOISE_WIDTH: f32 = 1024.0;
+const CLOUDS_NOISE_HEIGHT: f32 = 512.0;
 
 #[derive(Component)]
 enum Cloud {
