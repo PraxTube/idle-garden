@@ -2,6 +2,7 @@ use bevy::{
     color::palettes::css::{DARK_GRAY, RED},
     prelude::*,
     text::FontSmoothing,
+    ui::RelativeCursorPosition,
 };
 
 use crate::{
@@ -107,6 +108,7 @@ fn spawn_stats(mut commands: Commands, assets: Res<GameAssets>) {
     let cap_increase_button = commands
         .spawn((
             ChildOf(container),
+            RelativeCursorPosition::default(),
             CapIncrease::default(),
             Button,
             ImageNode {
