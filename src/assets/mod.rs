@@ -96,6 +96,8 @@ pub struct GameAssets {
     pub store_item_background: Handle<Image>,
     #[asset(path = "ui/store_item_unaffordable_overlay.png")]
     pub store_item_unaffordable_overlay: Handle<Image>,
+    #[asset(path = "ui/cap_increase_background.png")]
+    pub cap_increase_background: Handle<Image>,
 
     #[asset(path = "ui/menu_background.png")]
     pub menu_background: Handle<Image>,

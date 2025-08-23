@@ -112,7 +112,7 @@ fn spawn_stats(mut commands: Commands, assets: Res<GameAssets>) {
             CapIncrease::default(),
             Button,
             ImageNode {
-                image: assets.store_item_background.clone(),
+                image: assets.cap_increase_background.clone(),
                 ..default()
             },
             Node {
