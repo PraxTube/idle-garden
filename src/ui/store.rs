@@ -421,6 +421,7 @@ fn update_store_page_items(mut store_page: ResMut<StorePageItems>) {
     store_page.items[1] = Flora::Raddish;
     store_page.items[2] = Flora::Carrot;
     store_page.items[3] = Flora::Corn;
+    store_page.items[4] = Flora::Pumpkin;
 }
 
 pub struct UiStorePlugin;

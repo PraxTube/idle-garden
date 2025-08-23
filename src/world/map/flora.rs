@@ -10,11 +10,7 @@ use strum::FromRepr;
 use crate::{
     assets::FLORA_SHADER,
     ui::{MenuAction, MenuActionEvent},
-    world::{
-        camera::YSort,
-        collisions::{StaticCollider, WORLD_COLLISION_GROUPS},
-        TILE_SIZE,
-    },
+    world::{camera::YSort, collisions::WORLD_COLLISION_GROUPS, TILE_SIZE},
     BachelorBuild, EffectAssets, GameAssets,
 };
 
@@ -26,7 +22,6 @@ pub struct FloraData {
     pub cost_growth_factor: f32,
     pub pps: u32,
     ysort: f32,
-    collider_size: (f32, f32),
     size_on_grid: (usize, usize),
 }
 
@@ -37,6 +32,7 @@ pub enum Flora {
     Raddish,
     Carrot,
     Corn,
+    Pumpkin,
 }
 
 /// This is used as an Event, but because Events are a little more boiler plate I opted to use just
@@ -68,7 +64,7 @@ impl Flora {
     }
 
     fn last() -> Self {
-        Flora::Corn
+        Flora::Pumpkin
     }
 
     pub fn len() -> usize {
@@ -95,14 +91,6 @@ impl FloraData {
 
     pub fn cost(&self, count: usize) -> u32 {
         self.base_cost * (self.cost_growth_factor.powi(count as i32)).floor() as u32
-    }
-
-    fn collider(&self) -> Option<StaticCollider> {
-        let (x, y) = self.collider_size;
-        if x == 0.0 && y == 0.0 {
-            return None;
-        }
-        Some(StaticCollider::new(x, y))
     }
 
     pub fn size_on_grid(&self) -> (usize, usize) {
@@ -146,7 +134,6 @@ fn spawn_flora(
     flora: &Flora,
     data: &FloraData,
 ) {
-    let maybe_collider = data.collider();
     let ysort = data.ysort();
 
     let root = commands
@@ -157,10 +144,6 @@ fn spawn_flora(
             WORLD_COLLISION_GROUPS,
         ))
         .id();
-
-    if let Some(collider) = maybe_collider {
-        commands.entity(root).insert(collider);
-    }
 
     let image_handle = flora.image(assets);
 

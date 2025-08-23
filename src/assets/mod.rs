@@ -81,6 +81,7 @@ pub struct GameAssets {
             "ui/icons/raddish_icon.png",
             "ui/icons/carrot_icon.png",
             "ui/icons/corn_icon.png",
+            "ui/icons/pumpkin_icon.png",
         ),
         collection(typed)
     )]
@@ -118,7 +119,13 @@ pub struct GameAssets {
     pub building_selector_animation: Handle<AnimationClip2D>,
 
     #[asset(
-        paths("map/potatoe.png", "map/raddish.png", "map/carrot.png", "map/corn.png",),
+        paths(
+            "map/potatoe.png",
+            "map/raddish.png",
+            "map/carrot.png",
+            "map/corn.png",
+            "map/pumpkin.png"
+        ),
         collection(typed)
     )]
     pub flora_images: Vec<Handle<Image>>,
