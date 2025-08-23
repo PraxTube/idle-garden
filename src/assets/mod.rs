@@ -134,15 +134,6 @@ pub struct GameAssets {
     #[asset(path = "map/corn_crop_right.png")]
     pub corn_crop_right: Handle<Image>,
 
-    #[asset(path = "map/fence_top_corner.png")]
-    pub fence_top_corner: Handle<Image>,
-    #[asset(path = "map/fence_bottom_corner.png")]
-    pub fence_bottom_corner: Handle<Image>,
-    #[asset(path = "map/fence_vertical.png")]
-    pub fence_vertical: Handle<Image>,
-    #[asset(path = "map/fence_horizontal.png")]
-    pub fence_horizontal: Handle<Image>,
-
     // --- EFFECTS ---
     #[asset(path = "effects/grass_snippet.png")]
     pub grass_snippet: Handle<Image>,

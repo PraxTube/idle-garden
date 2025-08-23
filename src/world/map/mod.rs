@@ -42,7 +42,7 @@ use crate::{
 
 use super::TILE_SIZE;
 
-pub const MAP_SIZE: usize = 40;
+pub const MAP_SIZE: usize = 30;
 const EMPTY_CELL_VALUE: u16 = u16::MAX;
 const TALL_GRASS_CELL_VALUE: u16 = u16::MAX - 2;
 

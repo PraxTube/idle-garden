@@ -10,22 +10,6 @@ use crate::{
 
 use super::{MapData, ZLevel, MAP_SIZE};
 
-/// Return the correct asset handle, x flip, ysort above.
-fn indices_to_asset(assets: &GameAssets, x: usize, y: usize) -> (Handle<Image>, bool, bool) {
-    if y == 0 && (x == 0 || x == MAP_SIZE + 1) {
-        return (assets.fence_bottom_corner.clone(), x == 0, true);
-    } else if y == MAP_SIZE + 1 && (x == 0 || x == MAP_SIZE + 1) {
-        return (assets.fence_top_corner.clone(), x == 0, false);
-    } else if x == 0 || x == MAP_SIZE + 1 {
-        return (assets.fence_vertical.clone(), x == 0, false);
-    } else if y == 0 || y == MAP_SIZE + 1 {
-        return (assets.fence_horizontal.clone(), false, y == 0);
-    }
-
-    error!("incorrect mapping of fence! Must never happen");
-    (assets.fence_horizontal.clone(), true, false)
-}
-
 fn spawn_map_border(mut commands: Commands) {
     let size = MAP_SIZE as f32 * TILE_SIZE;
 
@@ -63,40 +47,43 @@ fn spawn_map_border(mut commands: Commands) {
     }
 }
 
-fn spawn_fence(commands: &mut Commands, assets: &GameAssets, pos: Vec2, x: usize, y: usize) {
-    let (image, flip_x, ysort_above) = indices_to_asset(assets, x, y);
-    let z = if ysort_above {
-        ZLevel::TopEnvironment.value()
-    } else {
-        ZLevel::Floor.value()
-    };
-
+fn spawn_dark_area(commands: &mut Commands, pos: Vec2, scale: Vec3) {
     commands.spawn((
+        Transform::from_translation(pos.extend(ZLevel::Floor.value() + 1.0)).with_scale(scale),
         Sprite {
-            image,
-            flip_x,
+            image: Handle::<Image>::default(),
+            color: Color::BLACK.with_alpha(0.3).into(),
             ..default()
         },
-        Transform::from_translation(pos.extend(z)),
     ));
 }
 
-fn spawn_fences(mut commands: Commands, assets: Res<GameAssets>, map_data: Res<MapData>) {
-    let offset = Vec2::ONE * TILE_SIZE;
+fn spawn_dark_areas(mut commands: Commands, map_data: Res<MapData>) {
+    spawn_dark_area(
+        &mut commands,
+        map_data.grid_indices_to_pos(0, MAP_SIZE / 2) + Vec2::new(-1.5 * TILE_SIZE, 0.0),
+        Vec3::new(2.0 * TILE_SIZE, TILE_SIZE * MAP_SIZE as f32 * 1.5, 1.0),
+    );
 
-    for x in 0..MAP_SIZE + 2 {
-        for y in [0, MAP_SIZE + 1] {
-            let pos = map_data.grid_indices_to_pos(x, y) - offset;
-            spawn_fence(&mut commands, &assets, pos, x, y);
-        }
-    }
+    spawn_dark_area(
+        &mut commands,
+        map_data.grid_indices_to_pos(MAP_SIZE, MAP_SIZE / 2) + Vec2::new(0.5 * TILE_SIZE, 0.0),
+        Vec3::new(2.0 * TILE_SIZE, TILE_SIZE * MAP_SIZE as f32 * 1.5, 1.0),
+    );
 
-    for x in [0, MAP_SIZE + 1] {
-        for y in 0..MAP_SIZE + 2 {
-            let pos = map_data.grid_indices_to_pos(x, y) - offset;
-            spawn_fence(&mut commands, &assets, pos, x, y);
-        }
-    }
+    spawn_dark_area(
+        &mut commands,
+        map_data.grid_indices_to_pos(MAP_SIZE / 2, MAP_SIZE)
+            + Vec2::new(-0.5 * TILE_SIZE, 0.5 * TILE_SIZE),
+        Vec3::new(TILE_SIZE * MAP_SIZE as f32, 2.0 * TILE_SIZE, 1.0),
+    );
+
+    spawn_dark_area(
+        &mut commands,
+        map_data.grid_indices_to_pos(MAP_SIZE / 2, 0)
+            + Vec2::new(-0.5 * TILE_SIZE, -1.7 * TILE_SIZE),
+        Vec3::new(TILE_SIZE * MAP_SIZE as f32, 2.0 * TILE_SIZE, 1.0),
+    );
 }
 
 pub struct MapBorderPlugin;
@@ -106,7 +93,7 @@ impl Plugin for MapBorderPlugin {
         app.add_systems(OnExit(GameState::AssetLoading), spawn_map_border)
             .add_systems(
                 Update,
-                spawn_fences.run_if(
+                spawn_dark_areas.run_if(
                     resource_exists::<GameAssets>.and(resource_exists::<MapData>.and(run_once)),
                 ),
             );
