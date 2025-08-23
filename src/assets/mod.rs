@@ -80,9 +80,7 @@ pub struct GameAssets {
             "ui/icons/potatoe_icon.png",
             "ui/icons/raddish_icon.png",
             "ui/icons/carrot_icon.png",
-            "ui/icons/sunflower_icon.png",
-            "map/tree.png",
-            "map/swamp_tree.png",
+            "ui/icons/corn_icon.png",
         ),
         collection(typed)
     )]
@@ -120,17 +118,14 @@ pub struct GameAssets {
     pub building_selector_animation: Handle<AnimationClip2D>,
 
     #[asset(
-        paths(
-            "map/potatoe.png",
-            "map/raddish.png",
-            "map/carrot.png",
-            "map/sunflower.png",
-            "map/tree.png",
-            "map/swamp_tree.png",
-        ),
+        paths("map/potatoe.png", "map/raddish.png", "map/carrot.png", "map/corn.png",),
         collection(typed)
     )]
     pub flora_images: Vec<Handle<Image>>,
+    #[asset(path = "map/corn_crop_left.png")]
+    pub corn_crop_left: Handle<Image>,
+    #[asset(path = "map/corn_crop_right.png")]
+    pub corn_crop_right: Handle<Image>,
 
     #[asset(path = "map/fence_top_corner.png")]
     pub fence_top_corner: Handle<Image>,

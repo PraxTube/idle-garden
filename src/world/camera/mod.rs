@@ -17,12 +17,14 @@ impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_camera)
             .add_systems(Update, (zoom_camera,))
-            .add_systems(
+            .configure_sets(
                 PostUpdate,
-                (apply_y_sort, apply_y_sort_child)
-                    .chain()
-                    .in_set(CameraSystemSet::ApplyYSort),
+                (
+                    CameraSystemSet::UpdateTransform.before(CameraSystemSet::ApplyYSort),
+                    CameraSystemSet::ApplyYSort.before(TransformSystem::TransformPropagate),
+                ),
             )
+            .add_systems(PostUpdate, apply_y_sort.in_set(CameraSystemSet::ApplyYSort))
             .add_systems(
                 PostUpdate,
                 update_camera_transform.in_set(CameraSystemSet::UpdateTransform),
@@ -40,13 +42,6 @@ pub struct MainCamera {
 /// based on its y value.
 #[derive(Component)]
 pub struct YSort(pub f32);
-/// Same as `YSort` but takes into account its parent `YSort`.
-/// You will want to use this if the parent entity has a `YSort`.
-///
-/// For example, if you have a player and a player shadow than
-/// you can use this for this shadow to have its own ysort.
-#[derive(Component)]
-pub struct YSortChild(pub f32);
 
 /// Sets that are used to control the camera's transform.
 /// They run before bevy's `TransformSystem::TransformPropagate`.
@@ -86,23 +81,9 @@ impl CameraSystemSet {
     }
 }
 
-fn apply_y_sort(mut q_transforms: Query<(&mut Transform, &YSort)>) {
-    for (mut transform, ysort) in &mut q_transforms {
-        transform.translation.z = ysort.0 - transform.translation.y;
-    }
-}
-
-fn apply_y_sort_child(
-    q_parents: Query<&Transform, (With<YSort>, Without<YSortChild>)>,
-    mut q_transforms: Query<(&ChildOf, &mut Transform, &YSortChild), Without<YSort>>,
-) {
-    for (child_of, mut transform, ysort) in &mut q_transforms {
-        let parent_transform = match q_parents.get(child_of.parent()) {
-            Ok(r) => r,
-            Err(_) => continue,
-        };
-        transform.translation.z =
-            ysort.0 - transform.translation.y - parent_transform.translation.y;
+fn apply_y_sort(mut q_transforms: Query<(&mut Transform, &GlobalTransform, &YSort)>) {
+    for (mut transform, global_transform, ysort) in &mut q_transforms {
+        transform.translation.z = ysort.0 - global_transform.translation().y;
     }
 }
 

@@ -24,12 +24,8 @@ use super::{ItemBought, MapData, EMPTY_CELL_VALUE, MAP_SIZE, TALL_GRASS_CELL_VAL
 pub struct FloraData {
     base_cost: u32,
     pub cost_growth_factor: f32,
-    // If false, will use linear growth.
-    exponential_growth: bool,
     pub pps: u32,
-    tree_shader: bool,
     ysort: f32,
-    gfx_offset: (f32, f32),
     collider_size: (f32, f32),
     size_on_grid: (usize, usize),
 }
@@ -40,9 +36,7 @@ pub enum Flora {
     Potatoe,
     Raddish,
     Carrot,
-    Sunflower,
-    Tree,
-    SwampTree,
+    Corn,
 }
 
 /// This is used as an Event, but because Events are a little more boiler plate I opted to use just
@@ -74,7 +68,7 @@ impl Flora {
     }
 
     fn last() -> Self {
-        Flora::SwampTree
+        Flora::Corn
     }
 
     pub fn len() -> usize {
@@ -95,21 +89,12 @@ impl Flora {
 }
 
 impl FloraData {
-    fn ysort(&self) -> YSort {
-        YSort(self.ysort)
-    }
-
-    pub fn gfx_offset(&self) -> Vec2 {
-        let (x, y) = self.gfx_offset;
-        Vec2::new(x, y)
+    fn ysort(&self) -> f32 {
+        self.ysort
     }
 
     pub fn cost(&self, count: usize) -> u32 {
-        if self.exponential_growth {
-            self.base_cost * (self.cost_growth_factor.powi(count as i32)).floor() as u32
-        } else {
-            self.base_cost + (self.cost_growth_factor).round() as u32 * count as u32
-        }
+        self.base_cost * (self.cost_growth_factor.powi(count as i32)).floor() as u32
     }
 
     fn collider(&self) -> Option<StaticCollider> {
@@ -154,22 +139,20 @@ impl Material2d for FloraMaterial {
 fn spawn_flora(
     commands: &mut Commands,
     assets: &GameAssets,
-    effects: &EffectAssets,
-    materials: &mut Assets<FloraMaterial>,
-    images: &Assets<Image>,
+    _effects: &EffectAssets,
+    _materials: &mut Assets<FloraMaterial>,
+    _images: &Assets<Image>,
     pos: Vec2,
     flora: &Flora,
     data: &FloraData,
 ) {
     let maybe_collider = data.collider();
     let ysort = data.ysort();
-    let gfx_offset = data.gfx_offset();
 
     let root = commands
         .spawn((
             FloraMarker,
-            Transform::from_translation(pos.extend(0.0)),
-            ysort,
+            Transform::default(),
             Visibility::Inherited,
             WORLD_COLLISION_GROUPS,
         ))
@@ -180,39 +163,32 @@ fn spawn_flora(
     }
 
     let image_handle = flora.image(assets);
-    let Some(image) = images.get(&image_handle) else {
-        error!("failed to get image from image handle when spawning flora, must never happen!");
-        return;
-    };
 
-    let image_size = Vec2::new(image.width() as f32, image.height() as f32);
+    commands.spawn((
+        ChildOf(root),
+        YSort(ysort),
+        Transform::from_translation(pos.extend(0.0)),
+        Sprite {
+            image: image_handle.clone(),
+            ..default()
+        },
+    ));
 
-    let entity = commands.spawn(ChildOf(root)).id();
+    if flora == &Flora::Corn {
+        debug_assert!(ysort < 0.0);
+        commands.spawn((
+            ChildOf(root),
+            Transform::from_translation((pos + Vec2::new(0.0, 16.0)).extend(0.0)),
+            YSort(10.0),
+            Sprite::from_image(assets.corn_crop_left.clone()),
+        ));
 
-    if data.tree_shader {
-        commands
-            .entity(entity)
-            .insert(
-                Transform::from_translation(gfx_offset.extend(0.0))
-                    .with_scale(image_size.extend(1.0)),
-            )
-            .insert(Mesh2d(effects.rect_mesh.clone()))
-            .insert(MeshMaterial2d(
-                materials
-                    .add(FloraMaterial {
-                        texel_size: (1.0 / image_size).extend(0.0).extend(0.0),
-                        texture: Some(image_handle.clone()),
-                    })
-                    .clone(),
-            ));
-    } else {
-        commands
-            .entity(entity)
-            .insert(Transform::from_translation(gfx_offset.extend(0.0)))
-            .insert(Sprite {
-                image: image_handle.clone(),
-                ..default()
-            });
+        commands.spawn((
+            ChildOf(root),
+            Transform::from_translation((pos + Vec2::new(0.0, 16.0)).extend(0.0)),
+            YSort(22.0),
+            Sprite::from_image(assets.corn_crop_right.clone()),
+        ));
     }
 }
 
