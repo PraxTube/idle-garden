@@ -33,6 +33,7 @@ pub enum Flora {
     Carrot,
     Corn,
     Pumpkin,
+    Onion,
 }
 
 /// This is used as an Event, but because Events are a little more boiler plate I opted to use just
@@ -64,7 +65,7 @@ impl Flora {
     }
 
     fn last() -> Self {
-        Flora::Pumpkin
+        Flora::Onion
     }
 
     pub fn len() -> usize {

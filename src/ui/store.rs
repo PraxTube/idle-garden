@@ -15,7 +15,7 @@ use super::outline::TextOutline;
 
 const STORE_ROOT_PADDING_VERTICAL: f32 = 40.0;
 const HORIZONTAL_ITEM_PADDING: f32 = 50.0;
-const NUMBER_OF_ITEMS_ON_PAGE: usize = 8;
+const NUMBER_OF_ITEMS_ON_PAGE: usize = 6;
 
 #[derive(Component)]
 struct StoreRoot;
@@ -417,11 +417,12 @@ fn update_store_item_icons(
 }
 
 fn update_store_page_items(mut store_page: ResMut<StorePageItems>) {
-    store_page.items[0] = Flora::Potatoe;
-    store_page.items[1] = Flora::Raddish;
-    store_page.items[2] = Flora::Carrot;
-    store_page.items[3] = Flora::Corn;
-    store_page.items[4] = Flora::Pumpkin;
+    store_page.items[0] = Flora::Raddish;
+    store_page.items[1] = Flora::Onion;
+    store_page.items[2] = Flora::Potatoe;
+    store_page.items[3] = Flora::Carrot;
+    store_page.items[4] = Flora::Corn;
+    store_page.items[5] = Flora::Pumpkin;
 }
 
 pub struct UiStorePlugin;

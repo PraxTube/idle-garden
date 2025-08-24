@@ -82,6 +82,7 @@ pub struct GameAssets {
             "ui/icons/carrot_icon.png",
             "ui/icons/corn_icon.png",
             "ui/icons/pumpkin_icon.png",
+            "ui/icons/onion_icon.png",
         ),
         collection(typed)
     )]
@@ -126,7 +127,8 @@ pub struct GameAssets {
             "map/raddish.png",
             "map/carrot.png",
             "map/corn.png",
-            "map/pumpkin.png"
+            "map/pumpkin.png",
+            "map/onion.png",
         ),
         collection(typed)
     )]
