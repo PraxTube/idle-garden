@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-FILE = "SIMULATION_PROGRESS_OUT.csv"
+FILE = "../SIMULATION_PROGRESS_OUT.csv"
 
 
 data = None

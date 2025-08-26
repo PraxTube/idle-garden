@@ -248,7 +248,7 @@ fn update_cap_increase_visuals(
         (Color::WHITE, Visibility::Hidden)
     };
 
-    let cost = core.silos * POINTS_CAP_COST_INCREASE_PER_SILO;
+    let cost = (core.silos + 1) * POINTS_CAP_COST_INCREASE_PER_SILO;
     cost_text.text = format_money_string(cost);
     (cost_text.color, *unaffordable_overlay_visibility) = if cost > core.points {
         (RED.into(), Visibility::Inherited)
@@ -272,7 +272,7 @@ fn buy_silo(
         return;
     }
 
-    let cost = core.silos * POINTS_CAP_COST_INCREASE_PER_SILO;
+    let cost = (core.silos + 1) * POINTS_CAP_COST_INCREASE_PER_SILO;
     if core.points < cost {
         return;
     }

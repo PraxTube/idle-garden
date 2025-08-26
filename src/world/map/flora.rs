@@ -28,12 +28,12 @@ pub struct FloraData {
 #[derive(Clone, Copy, Deserialize, Hash, Eq, PartialEq, Default, FromRepr, Debug)]
 pub enum Flora {
     #[default]
-    Potatoe,
     Raddish,
-    Carrot,
-    Corn,
-    Pumpkin,
     Onion,
+    Potatoe,
+    Carrot,
+    Pumpkin,
+    Corn,
 }
 
 /// This is used as an Event, but because Events are a little more boiler plate I opted to use just
@@ -65,7 +65,7 @@ impl Flora {
     }
 
     fn last() -> Self {
-        Flora::Onion
+        Flora::Corn
     }
 
     pub fn len() -> usize {
@@ -91,7 +91,7 @@ impl FloraData {
     }
 
     pub fn cost(&self, count: usize) -> u32 {
-        self.base_cost * (self.cost_growth_factor.powi(count as i32)).floor() as u32
+        (self.base_cost as f32 * (self.cost_growth_factor.powi(count as i32))).floor() as u32
     }
 
     pub fn size_on_grid(&self) -> (usize, usize) {

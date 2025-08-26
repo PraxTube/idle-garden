@@ -77,12 +77,12 @@ pub struct GameAssets {
     // --- UI ---
     #[asset(
         paths(
-            "ui/icons/potatoe_icon.png",
             "ui/icons/raddish_icon.png",
-            "ui/icons/carrot_icon.png",
-            "ui/icons/corn_icon.png",
-            "ui/icons/pumpkin_icon.png",
             "ui/icons/onion_icon.png",
+            "ui/icons/potatoe_icon.png",
+            "ui/icons/carrot_icon.png",
+            "ui/icons/pumpkin_icon.png",
+            "ui/icons/corn_icon.png",
         ),
         collection(typed)
     )]
@@ -123,12 +123,12 @@ pub struct GameAssets {
 
     #[asset(
         paths(
-            "map/potatoe.png",
             "map/raddish.png",
-            "map/carrot.png",
-            "map/corn.png",
-            "map/pumpkin.png",
             "map/onion.png",
+            "map/potatoe.png",
+            "map/carrot.png",
+            "map/pumpkin.png",
+            "map/corn.png",
         ),
         collection(typed)
     )]

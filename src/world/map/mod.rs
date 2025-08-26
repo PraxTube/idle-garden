@@ -46,9 +46,9 @@ pub const MAP_SIZE: usize = 30;
 const EMPTY_CELL_VALUE: u16 = u16::MAX;
 const TALL_GRASS_CELL_VALUE: u16 = u16::MAX - 2;
 
-const DEFAULT_POINTS_CAP: u64 = 800;
-const POINTS_CAP_INCEASE_PER_SILO: u64 = 300;
-pub const POINTS_CAP_COST_INCREASE_PER_SILO: u64 = 200;
+const DEFAULT_POINTS_CAP: u64 = 2500;
+const POINTS_CAP_INCEASE_PER_SILO: u64 = 800;
+pub const POINTS_CAP_COST_INCREASE_PER_SILO: u64 = 350;
 const AUTO_SAVE_TIME_INTERVAL: u64 = 60;
 
 const TALL_GRASS_POINTS: u64 = 1;
@@ -807,7 +807,7 @@ pub fn simulate_progression() {
     }
 
     fn get_next_item_index(core: &mut ProgressionCore, flora_data: &[FloraData]) -> Option<usize> {
-        let silo_cost = POINTS_CAP_COST_INCREASE_PER_SILO * core.silos;
+        let silo_cost = POINTS_CAP_COST_INCREASE_PER_SILO * (core.silos + 1);
         if core.points >= silo_cost {
             core.silos += 1;
             core.points -= silo_cost;
@@ -839,19 +839,19 @@ pub fn simulate_progression() {
     let map_data = MapData::default();
     assert_eq!(core.flora.len(), map_data.flora_data.len());
 
-    core.points = DEFAULT_POINTS_CAP / 10;
-    assert!(core.points > 0);
-
     let mut data = Vec::new();
 
-    const MAX_TICKS: usize = 1000;
+    const MAX_TICKS: usize = 600;
     for time in 0..MAX_TICKS {
         data.push((time, core.clone()));
 
         let pps = compute_current_pps(&core, &map_data);
         core.pps = pps;
         core.update_points_cap();
+        // Add PPS
         core.points = (core.points + core.pps as u64).min(core.points_cap);
+        // Add 50/tick (supposed to simulate grass cutting)
+        core.points = (core.points + 50).min(core.points_cap);
 
         let Some(index) = get_next_item_index(&mut core, &map_data.flora_data) else {
             continue;
@@ -884,9 +884,10 @@ pub fn simulate_progression() {
 
     std::fs::write("SIMULATION_PROGRESS_OUT.csv", content).expect("failed to write to file");
 
-    println!("{}", core.points);
-    println!("{}", core.points_cap);
-    println!("{}", core.pps);
+    println!("Ran for: {} TICKS (seconds)", MAX_TICKS);
+    println!("Points: {}", core.points);
+    println!("Cap: {}", core.points_cap);
+    println!("PPS: {}", core.pps);
 
     println!("{:?}", core.flora);
 }
