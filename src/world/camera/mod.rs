@@ -59,7 +59,8 @@ impl Default for MainCamera {
     fn default() -> Self {
         Self {
             bounds: Aabb2d {
-                min: Vec2::NEG_ONE * MAP_SIZE as f32 * TILE_SIZE * 0.5 - 2.0 * TILE_SIZE,
+                min: Vec2::NEG_ONE * MAP_SIZE as f32 * TILE_SIZE * 0.5 - 2.0 * TILE_SIZE
+                    + Vec2::new(0.0, -1.5 * TILE_SIZE),
                 max: Vec2::ONE * MAP_SIZE as f32 * TILE_SIZE * 0.5 + TILE_SIZE,
             },
         }

@@ -81,8 +81,8 @@ fn spawn_dark_areas(mut commands: Commands, map_data: Res<MapData>) {
     spawn_dark_area(
         &mut commands,
         map_data.grid_indices_to_pos(MAP_SIZE / 2, 0)
-            + Vec2::new(-0.5 * TILE_SIZE, -1.7 * TILE_SIZE),
-        Vec3::new(TILE_SIZE * MAP_SIZE as f32, 2.0 * TILE_SIZE, 1.0),
+            + Vec2::new(-0.5 * TILE_SIZE, -2.7 * TILE_SIZE),
+        Vec3::new(TILE_SIZE * MAP_SIZE as f32, 4.0 * TILE_SIZE, 1.0),
     );
 }
 
