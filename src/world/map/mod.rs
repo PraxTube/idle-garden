@@ -4,7 +4,6 @@ mod clouds;
 mod debug;
 mod flora;
 mod grass;
-mod telemetry;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs::{self, read_to_string};
@@ -16,7 +15,6 @@ use wasm_bindgen::prelude::*;
 pub use building::{Blueprint, BuildingSystemSet};
 pub use flora::Flora;
 pub use grass::{CutTallGrass, GrassMaterial};
-pub use telemetry::GameTelemetryManager;
 
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::window::exit_on_all_closed;
@@ -26,7 +24,7 @@ use bevy::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::assets::{GAME_TELEMETRY_FILE, MAP_DATA_FILE, PROGRESSION_CORE_FILE};
+use crate::assets::{MAP_DATA_FILE, PROGRESSION_CORE_FILE};
 #[cfg(target_arch = "wasm32")]
 use crate::assets::{WASM_KEYS, WASM_MAP_DATA_KEY_STORAGE, WASM_PROGRESSION_CORE_KEY_STORAGE};
 
@@ -36,8 +34,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     assets::FLORA_DATA_CORE,
     player::{GamingInput, Player},
-    ui::{ItemPressed, MenuAction, MenuActionEvent},
-    BachelorBuild,
+    ui::{MenuAction, MenuActionEvent},
 };
 
 use super::TILE_SIZE;
@@ -64,7 +61,6 @@ impl Plugin for MapPlugin {
             clouds::CloudsPlugin,
             flora::MapFloraPlugin,
             grass::MapGrassPlugin,
-            telemetry::GameTelemetryPlugin,
         ))
         .add_event::<ItemBought>()
         .add_event::<AutoSave>()
@@ -97,8 +93,7 @@ impl Plugin for MapPlugin {
             (
                 update_player_pos_in_core,
                 update_map_data_on_tall_grass_cut,
-                trigger_item_bought_on_item_pressed.run_if(resource_exists::<BachelorBuild>),
-                trigger_item_bought_on_blueprint_build.run_if(resource_exists::<BachelorBuild>),
+                trigger_item_bought_on_blueprint_build,
                 update_progression_core_on_item_bought,
                 update_points_per_second,
                 update_points_cap,
@@ -476,7 +471,7 @@ fn insert_progression_core(mut commands: Commands) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn save_game_state_wasm(keys: &[&str; 3], data: &[String; 3]) {
+fn save_game_state_wasm(keys: &[&str; 2], data: &[String; 2]) {
     use web_sys::window;
 
     let Some(storage) = window().and_then(|w| w.local_storage().ok()).flatten() else {
@@ -504,12 +499,8 @@ extern "C" {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn sync_state_to_js(
-    core: Res<ProgressionCore>,
-    map_data: Res<MapData>,
-    telemetry: Res<GameTelemetryManager>,
-) {
-    let data = package_save_data(&core, &map_data, &telemetry);
+fn sync_state_to_js(core: Res<ProgressionCore>, map_data: Res<MapData>) {
+    let data = package_save_data(&core, &map_data);
     let save_data: HashMap<&&str, &String> = WASM_KEYS.iter().zip(data.iter()).collect();
 
     let Ok(save_data_string) = &serde_json::to_string(&save_data) else {
@@ -521,8 +512,8 @@ fn sync_state_to_js(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn save_game_state_native(data: &[String; 3]) {
-    const FILES: [&str; 3] = [PROGRESSION_CORE_FILE, MAP_DATA_FILE, GAME_TELEMETRY_FILE];
+fn save_game_state_native(data: &[String; 2]) {
+    const FILES: [&str; 2] = [PROGRESSION_CORE_FILE, MAP_DATA_FILE];
 
     for i in 0..FILES.len() {
         let err_msg = format!(
@@ -536,16 +527,10 @@ fn save_game_state_native(data: &[String; 3]) {
 
 /// 1. Core
 /// 2. MapData
-/// 3. Game Telemetry
-fn package_save_data(
-    core: &ProgressionCore,
-    map_data: &MapData,
-    telemetry: &GameTelemetryManager,
-) -> [String; 3] {
+fn package_save_data(core: &ProgressionCore, map_data: &MapData) -> [String; 2] {
     [
         serde_json::to_string(core).unwrap_or_default(),
         map_data.to_string(),
-        serde_json::to_string(telemetry).unwrap_or_default(),
     ]
 }
 
@@ -553,12 +538,8 @@ fn trigger_auto_save(mut ev_auto_save: EventWriter<AutoSave>) {
     ev_auto_save.write(AutoSave);
 }
 
-fn save_game_state(
-    core: Res<ProgressionCore>,
-    map_data: Res<MapData>,
-    telemetry: Res<GameTelemetryManager>,
-) {
-    let data = package_save_data(&core, &map_data, &telemetry);
+fn save_game_state(core: Res<ProgressionCore>, map_data: Res<MapData>) {
+    let data = package_save_data(&core, &map_data);
 
     #[cfg(target_arch = "wasm32")]
     save_game_state_wasm(&WASM_KEYS, &data);
@@ -609,42 +590,14 @@ fn add_points(mut core: ResMut<ProgressionCore>) {
     core.points = (core.points + core.pps as u64).min(core.points_cap);
 }
 
-fn trigger_item_bought_on_item_pressed(
-    core: Res<ProgressionCore>,
-    map_data: Res<MapData>,
-    bachelor_build: Res<BachelorBuild>,
-    mut ev_item_pressed: EventReader<ItemPressed>,
-    mut ev_item_bought: EventWriter<ItemBought>,
-) {
-    if bachelor_build.with_building {
-        return;
-    }
-
-    for ev in ev_item_pressed.read() {
-        if core.is_affordable(&map_data, &ev.flora) {
-            ev_item_bought.write(ItemBought {
-                pos: Vec2::ZERO,
-                cost: map_data.flora_data[ev.flora.index()]
-                    .cost(core.flora[ev.flora.index()].into()),
-                item: ev.flora,
-            });
-        }
-    }
-}
-
 fn trigger_item_bought_on_blueprint_build(
     core: Res<ProgressionCore>,
     map_data: Res<MapData>,
     gaming_input: Res<GamingInput>,
-    bachelor_build: Res<BachelorBuild>,
     q_player: Query<&Player>,
     q_blueprint: Query<(&Transform, &Blueprint)>,
     mut ev_item_bought: EventWriter<ItemBought>,
 ) {
-    if !bachelor_build.with_building {
-        return;
-    }
-
     if !gaming_input.confirm {
         return;
     }

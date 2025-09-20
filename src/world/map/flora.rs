@@ -11,7 +11,7 @@ use crate::{
     assets::FLORA_SHADER,
     ui::{MenuAction, MenuActionEvent},
     world::{camera::YSort, collisions::WORLD_COLLISION_GROUPS, TILE_SIZE},
-    BachelorBuild, EffectAssets, GameAssets,
+    EffectAssets, GameAssets,
 };
 
 use super::{ItemBought, MapData, EMPTY_CELL_VALUE, MAP_SIZE, TALL_GRASS_CELL_VALUE};
@@ -183,13 +183,8 @@ fn spawn_flora_on_item_bought(
     mut materials: ResMut<Assets<FloraMaterial>>,
     images: Res<Assets<Image>>,
     mut map_data: ResMut<MapData>,
-    bachelor_build: Res<BachelorBuild>,
     mut ev_item_bought: EventReader<ItemBought>,
 ) {
-    if !bachelor_build.with_building {
-        return;
-    }
-
     for ev in ev_item_bought.read() {
         let flora_data = map_data.flora_data(ev.item.index());
         let pos = ev.pos;
@@ -273,7 +268,8 @@ impl Plugin for MapFloraPlugin {
                 (
                     spawn_flora_on_item_bought.run_if(
                         resource_exists::<GameAssets>
-                            .and(resource_exists::<MapData>.and(resource_exists::<BachelorBuild>)),
+                            .and(resource_exists::<MapData>)
+                            .and(resource_exists::<EffectAssets>),
                     ),
                     spawn_flora_on_map_data_insertion.run_if(
                         resource_exists::<GameAssets>

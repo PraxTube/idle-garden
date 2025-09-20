@@ -1,12 +1,10 @@
 mod auto_save_icon;
-mod consent;
 mod debug;
 mod menu;
 mod outline;
 mod stats;
 mod store;
 
-pub use consent::Consent;
 pub use menu::{MenuAction, MenuActionEvent};
 pub use store::ItemPressed;
 
@@ -21,7 +19,6 @@ impl Plugin for UiPlugin {
         app.add_plugins((
             debug::UiDebugPlugin,
             outline::UiOutlinePlugin,
-            consent::UiConsentPlugin,
             auto_save_icon::UiAutoSaveIconPlugin,
             stats::UiStatsPlugin,
             store::UiStorePlugin,

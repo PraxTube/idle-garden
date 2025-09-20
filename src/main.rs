@@ -25,9 +25,6 @@ use bevy_asset_loader::prelude::*;
 #[cfg(debug_assertions)]
 use world::simulate_progression;
 
-#[cfg(target_arch = "wasm32")]
-use crate::world::GameTelemetryManager;
-
 const BACKGROUND_COLOR: Color = Color::srgb(0.15, 0.62, 0.33);
 const DEFAULT_WINDOW_WIDTH: f32 = 1280.0;
 
@@ -35,19 +32,9 @@ const DEFAULT_WINDOW_WIDTH: f32 = 1280.0;
 pub enum GameState {
     #[default]
     AssetLoading,
-    BachelorToggle,
-    ConsentCheck,
-    ConsentNotice,
     Gaming,
     Menu,
 }
-
-#[derive(Resource)]
-pub struct BachelorBuild {
-    with_building: bool,
-}
-#[derive(Component)]
-struct BachelorBuildComponent;
 
 fn main() {
     #[cfg(debug_assertions)]
@@ -93,7 +80,7 @@ fn main() {
     .init_state::<GameState>()
     .add_loading_state(
         LoadingState::new(GameState::AssetLoading)
-            .continue_to_state(GameState::BachelorToggle)
+            .continue_to_state(GameState::Gaming)
             .load_collection::<GameAssets>()
             .finally_init_resource::<EffectAssets>(),
     )
@@ -106,81 +93,5 @@ fn main() {
         player::PlayerPlugin,
     ));
 
-    #[cfg(not(target_arch = "wasm32"))]
-    app.add_systems(Startup, spawn_bachelor_toggle).add_systems(
-        Update,
-        continue_from_bachelor_state_native.run_if(in_state(GameState::BachelorToggle)),
-    );
-
-    #[cfg(target_arch = "wasm32")]
-    app.add_systems(
-        Update,
-        continue_from_bachelor_state_wasm.run_if(
-            resource_exists::<GameTelemetryManager>
-                .and(in_state(GameState::BachelorToggle).and(run_once)),
-        ),
-    );
-
     app.run();
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn spawn_bachelor_toggle(mut commands: Commands) {
-    commands.spawn((
-        BachelorBuildComponent,
-        GlobalZIndex(1),
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            ..default()
-        },
-        ImageNode {
-            image: Handle::<Image>::default(),
-            color: Color::BLACK,
-            ..default()
-        },
-    ));
-
-    commands.spawn((
-        BachelorBuildComponent,
-        GlobalZIndex(2),
-        Text::new("Select Build\nPress [1] to select WITHOUT building\nPress [2] to select WITH building."),
-        TextFont {
-            font_size: 35.0,
-            font_smoothing: bevy::text::FontSmoothing::None,
-            ..default()
-        },
-    ));
-}
-
-#[cfg(target_arch = "wasm32")]
-fn continue_from_bachelor_state_wasm(
-    mut commands: Commands,
-    mut next_state: ResMut<NextState<GameState>>,
-    telemetry: Res<GameTelemetryManager>,
-) {
-    commands.insert_resource(BachelorBuild {
-        with_building: telemetry.id.as_u128() & 1 == 1,
-    });
-    next_state.set(GameState::ConsentCheck);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn continue_from_bachelor_state_native(
-    mut commands: Commands,
-    mut next_state: ResMut<NextState<GameState>>,
-    keys: Res<ButtonInput<KeyCode>>,
-    q_bachelor_components: Query<Entity, With<BachelorBuildComponent>>,
-) {
-    if !keys.just_pressed(KeyCode::Digit1) && !keys.just_pressed(KeyCode::Digit2) {
-        return;
-    }
-
-    let with_building = !keys.just_pressed(KeyCode::Digit1) | keys.just_pressed(KeyCode::Digit2);
-    commands.insert_resource(BachelorBuild { with_building });
-    next_state.set(GameState::ConsentCheck);
-
-    for entity in q_bachelor_components {
-        commands.entity(entity).despawn();
-    }
 }

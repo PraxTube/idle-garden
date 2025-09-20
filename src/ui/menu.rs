@@ -4,18 +4,11 @@ use bevy::{
     text::FontSmoothing,
 };
 
-use crate::{
-    player::GamingInput,
-    world::{GameTelemetryManager, ProgressionCore},
-    GameAssets, GameState,
-};
-
-use super::Consent;
+use crate::{player::GamingInput, world::ProgressionCore, GameAssets, GameState};
 
 const DEFAULT_FONT_SIZE: f32 = 25.0;
 const RESET_UNLOCK_TIME: f32 = 3.0;
 const DISCORD_LINK: &str = "https://discord.gg/2h7dncQNTr";
-const SURVEY_LINK: &str = "https://rancic.org/idle-garden-survey";
 
 #[derive(Resource, Default)]
 struct MenuNavigator {
@@ -29,15 +22,12 @@ struct NonInteractable;
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum MenuAction {
     Continue,
-    SendDataYes,
-    SendDataNo,
     MusicOn,
     MusicOff,
     SoundOn,
     SoundOff,
     ResetPopUp,
     Reset,
-    Survey,
     CancelReset,
     UnlockReset,
     Discord,
@@ -71,15 +61,12 @@ impl MenuAction {
     fn string(self) -> String {
         let s = match self {
             Self::Continue => "Continue",
-            Self::SendDataYes => "Send Data=Y",
-            Self::SendDataNo => "Send Data=N",
             Self::MusicOn => "Music=On",
             Self::MusicOff => "Music=Off",
             Self::SoundOn => "Sound=On",
             Self::SoundOff => "Sound=Off",
             Self::ResetPopUp => "Reset",
             Self::Reset => "Reset",
-            Self::Survey => "Open Survey",
             Self::CancelReset => "Cancel",
             Self::UnlockReset => "SHOULD NEVER SEE THIS",
             Self::Discord => "SHOULD NEVER SEE THIS",
@@ -186,12 +173,7 @@ fn spawn_background(commands: &mut Commands, assets: &GameAssets) -> Entity {
     root
 }
 
-fn spawn_buttons(
-    commands: &mut Commands,
-    font: Handle<Font>,
-    consent: bool,
-    core: &ProgressionCore,
-) -> Entity {
+fn spawn_buttons(commands: &mut Commands, font: Handle<Font>, core: &ProgressionCore) -> Entity {
     let continue_button = spawn_button(
         commands,
         font.clone(),
@@ -218,37 +200,14 @@ fn spawn_buttons(
             MenuAction::SoundOff
         },
     );
-    let send_data = spawn_button(
-        commands,
-        font.clone(),
-        DEFAULT_FONT_SIZE,
-        if consent {
-            MenuAction::SendDataYes
-        } else {
-            MenuAction::SendDataNo
-        },
-    );
     let reset_button = spawn_button(
         commands,
         font.clone(),
         DEFAULT_FONT_SIZE,
         MenuAction::ResetPopUp,
     );
-    let survey_button = spawn_button(
-        commands,
-        font.clone(),
-        DEFAULT_FONT_SIZE,
-        MenuAction::Survey,
-    );
 
-    let vertical_buttons = [
-        continue_button,
-        music_button,
-        sound_button,
-        send_data,
-        survey_button,
-        reset_button,
-    ];
+    let vertical_buttons = [continue_button, music_button, sound_button, reset_button];
 
     let buttons = commands
         .spawn((Node {
@@ -277,15 +236,9 @@ fn spawn_buttons(
         .id()
 }
 
-fn spawn_menu(
-    mut commands: Commands,
-    assets: Res<GameAssets>,
-    core: Res<ProgressionCore>,
-    consent: Res<Consent>,
-) {
+fn spawn_menu(mut commands: Commands, assets: Res<GameAssets>, core: Res<ProgressionCore>) {
     let background = spawn_background(&mut commands, &assets);
-    let button_container =
-        spawn_buttons(&mut commands, assets.pixel_font.clone(), consent.0, &core);
+    let button_container = spawn_buttons(&mut commands, assets.pixel_font.clone(), &core);
     let discord_button = spawn_discord_button(&mut commands, &assets);
 
     commands
@@ -672,41 +625,6 @@ fn set_buttons_active_on_cancel_reset(
     }
 }
 
-fn toggle_send_data_button(
-    mut q_texts: Query<(&mut Text, &mut MenuData)>,
-    mut ev_menu_action: EventReader<MenuActionEvent>,
-) {
-    let mut toggle_on = false;
-    let mut toggle_off = false;
-
-    for ev in ev_menu_action.read() {
-        if ev.action == MenuAction::SendDataYes {
-            toggle_on = true;
-        }
-        if ev.action == MenuAction::SendDataNo {
-            toggle_off = true;
-        }
-    }
-
-    debug_assert!(!(toggle_on && toggle_off));
-
-    if toggle_off {
-        for (mut text, mut data) in &mut q_texts {
-            if data.action == MenuAction::SendDataNo {
-                data.action = MenuAction::SendDataYes;
-                text.0 = MenuAction::SendDataYes.string();
-            }
-        }
-    } else if toggle_on {
-        for (mut text, mut data) in &mut q_texts {
-            if data.action == MenuAction::SendDataYes {
-                data.action = MenuAction::SendDataNo;
-                text.0 = MenuAction::SendDataNo.string();
-            }
-        }
-    }
-}
-
 fn toggle_music(
     mut q_texts: Query<(&mut Text, &mut MenuData)>,
     mut ev_menu_action: EventReader<MenuActionEvent>,
@@ -832,22 +750,6 @@ fn open_discord_link(mut ev_menu_action: EventReader<MenuActionEvent>) {
     open_url_link(DISCORD_LINK, err_str);
 }
 
-fn open_survey_link(
-    telemetry: Res<GameTelemetryManager>,
-    mut ev_menu_action: EventReader<MenuActionEvent>,
-) {
-    if !ev_menu_action
-        .read()
-        .any(|ev| ev.action == MenuAction::Survey)
-    {
-        return;
-    }
-
-    let err_str = "failed to open survey link in default browser";
-    let url = format!("{}/?id={}", SURVEY_LINK, telemetry.id);
-    open_url_link(&url, err_str);
-}
-
 pub struct UiMenuPlugin;
 
 impl Plugin for UiMenuPlugin {
@@ -868,7 +770,6 @@ impl Plugin for UiMenuPlugin {
                     close_menu_and_trigger_continue_action.run_if(in_state(GameState::Menu)),
                     trigger_close_reset_pop_up_event,
                     despawn_reset_pop_up,
-                    toggle_send_data_button,
                     toggle_music,
                     toggle_sound,
                     update_reset_pop_up_timer_text,
@@ -876,7 +777,6 @@ impl Plugin for UiMenuPlugin {
                     remove_non_interactable_from_reset_button,
                     animate_discord_button,
                     open_discord_link,
-                    open_survey_link,
                     set_buttons_active_on_cancel_reset,
                     set_buttons_inactive_on_reset_pop_up,
                 )

@@ -9,8 +9,6 @@ use bevy_trickfilm::prelude::*;
 
 use crate::world::GrassMaterial;
 
-pub const APIKEY: &str = include_str!("../../apikey.env");
-
 pub const FLORA_DATA_CORE: &str = include_str!("../../assets/progression/flora.json");
 pub const FLORA_SHADER: &str = "shaders/flora_shader.wgsl";
 pub const GRASS_SHADER: &str = "shaders/grass_shader.wgsl";
@@ -22,25 +20,13 @@ pub const HALF_HEIGHT_GRASS_TIMESTAMPS_IMAGE: u32 = 8;
 pub const MAP_DATA_FILE: &str = "assets/save/map_data";
 #[cfg(not(target_arch = "wasm32"))]
 pub const PROGRESSION_CORE_FILE: &str = "assets/save/progression_core.json";
-#[cfg(not(target_arch = "wasm32"))]
-pub const GAME_TELEMETRY_FILE: &str = "assets/save/telemetry";
-#[cfg(not(target_arch = "wasm32"))]
-pub const CONSENT_FILE: &str = "assets/save/consent";
 
 #[cfg(target_arch = "wasm32")]
 pub const WASM_MAP_DATA_KEY_STORAGE: &str = "map-grid";
 #[cfg(target_arch = "wasm32")]
 pub const WASM_PROGRESSION_CORE_KEY_STORAGE: &str = "progression-core";
 #[cfg(target_arch = "wasm32")]
-pub const WASM_GAME_TELEMETRY_KEY_STORAGE: &str = "game-telemetry";
-#[cfg(target_arch = "wasm32")]
-pub const WASM_CONSENT_STORAGE: &str = "consent";
-#[cfg(target_arch = "wasm32")]
-pub const WASM_KEYS: [&str; 3] = [
-    WASM_PROGRESSION_CORE_KEY_STORAGE,
-    WASM_MAP_DATA_KEY_STORAGE,
-    WASM_GAME_TELEMETRY_KEY_STORAGE,
-];
+pub const WASM_KEYS: [&str; 2] = [WASM_PROGRESSION_CORE_KEY_STORAGE, WASM_MAP_DATA_KEY_STORAGE];
 
 const CUT_GRASS_PARTICLES_FILE: &str = "effects/cut_grass.ron";
 

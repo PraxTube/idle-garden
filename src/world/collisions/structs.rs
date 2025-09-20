@@ -57,12 +57,6 @@ pub struct ColliderColor(pub Color);
 #[derive(Component, Default)]
 pub struct Velocity(pub Vec2);
 
-/// Marker component for world collisions.
-/// These are all colliders that have World group as their membership.
-/// E.g wall colliders, props or border colliders.
-#[derive(Component)]
-pub struct WorldCollider;
-
 impl DynamicCollider {
     pub fn new(radius: f32, offset: Vec2) -> Self {
         Self { radius, offset }

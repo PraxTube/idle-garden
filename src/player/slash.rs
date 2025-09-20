@@ -18,11 +18,6 @@ struct Slash {
     timer: Timer,
 }
 
-/// Event used to signal that a slash was spawned.
-/// Necessary for game telemetry, can probably be remove after Bachelor.
-#[derive(Event)]
-pub struct SpawnedSlash;
-
 impl Default for Slash {
     fn default() -> Self {
         Self {
@@ -138,7 +133,7 @@ pub struct PlayerSlashPlugin;
 
 impl Plugin for PlayerSlashPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SpawnedSlash>().add_systems(
+        app.add_systems(
             Update,
             (
                 despawn_slashes,

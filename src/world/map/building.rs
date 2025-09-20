@@ -1,7 +1,7 @@
 use bevy::{color::palettes::css::RED, prelude::*};
 use bevy_trickfilm::prelude::*;
 
-use crate::{player::GamingInput, ui::ItemPressed, BachelorBuild, GameAssets};
+use crate::{player::GamingInput, ui::ItemPressed, GameAssets};
 
 use super::{Flora, MapData, ProgressionCore, ProgressionSystemSet, ZLevel};
 
@@ -19,13 +19,8 @@ fn spawn_blueprint_item(
     assets: Res<GameAssets>,
     core: Res<ProgressionCore>,
     map_data: Res<MapData>,
-    bachelor_build: Res<BachelorBuild>,
     mut ev_item_pressed: EventReader<ItemPressed>,
 ) {
-    if !bachelor_build.with_building {
-        return;
-    }
-
     for ev in ev_item_pressed.read() {
         if !core.is_affordable(&map_data, &ev.flora) {
             continue;
@@ -146,8 +141,7 @@ impl Plugin for MapBuildingPlugin {
             (
                 despawn_blueprint.run_if(on_event::<ItemPressed>),
                 despawn_blueprint_on_player_input,
-                spawn_blueprint_item
-                    .run_if(resource_exists::<GameAssets>.and(resource_exists::<BachelorBuild>)),
+                spawn_blueprint_item.run_if(resource_exists::<GameAssets>),
                 move_blueprint.run_if(resource_exists::<MapData>),
                 despawn_blueprint_if_not_affordable
                     .run_if(resource_exists::<ProgressionCore>.and(resource_exists::<MapData>)),
