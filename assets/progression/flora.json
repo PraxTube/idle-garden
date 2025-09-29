@@ -9,35 +9,35 @@
   "Onion": {
     "base_cost": 250,
     "cost_growth_factor": 1.2,
-    "pps": 2,
-    "ysort": -300,
-    "size_on_grid": [1, 1]
-  },
-  "Potatoe": {
-    "base_cost": 1000,
-    "cost_growth_factor": 1.4,
     "pps": 5,
     "ysort": -300,
     "size_on_grid": [1, 1]
   },
-  "Carrot": {
-    "base_cost": 1250,
-    "cost_growth_factor": 1.5,
-    "pps": 7,
-    "ysort": -300,
-    "size_on_grid": [1, 1]
-  },
-  "Pumpkin": {
-    "base_cost": 5000,
-    "cost_growth_factor": 2.0,
+  "Potatoe": {
+    "base_cost": 500,
+    "cost_growth_factor": 1.4,
     "pps": 10,
     "ysort": -300,
     "size_on_grid": [1, 1]
   },
+  "Carrot": {
+    "base_cost": 750,
+    "cost_growth_factor": 1.5,
+    "pps": 15,
+    "ysort": -300,
+    "size_on_grid": [1, 1]
+  },
+  "Pumpkin": {
+    "base_cost": 1000,
+    "cost_growth_factor": 2.0,
+    "pps": 40,
+    "ysort": -300,
+    "size_on_grid": [1, 1]
+  },
   "Corn": {
-    "base_cost": 10000,
+    "base_cost": 2000,
     "cost_growth_factor": 2.5,
-    "pps": 20,
+    "pps": 100,
     "ysort": -300,
     "size_on_grid": [1, 1]
   }
